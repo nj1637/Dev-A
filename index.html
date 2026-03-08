@@ -49,7 +49,6 @@
         #pin-lock-screen.active { display: flex; backdrop-filter: blur(8px); }
         .splash-exit { opacity: 0; pointer-events: none; transition: opacity 0.5s ease-out; }
 
-        /* Custom styles for password eye icon */
         .password-toggle { cursor: pointer; color: #94a3b8; transition: color 0.2s; }
         .password-toggle:hover { color: #059669; }
     </style>
@@ -253,6 +252,18 @@
                         </div>
                     </div>
 
+                    <!-- F3 & F7: Near Expiry & Commission Dashboards -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col max-h-[300px] feat-nearExpiry">
+                            <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2 shrink-0"><i data-lucide="calendar-off" class="text-orange-500 w-5 h-5"></i> Expiring Soon (< 90 Days)</h3>
+                            <div id="dash-near-expiry" class="space-y-2 overflow-y-auto pr-2 hide-scrollbar flex-1"></div>
+                        </div>
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col max-h-[300px] feat-salesman">
+                            <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2 shrink-0"><i data-lucide="users" class="text-indigo-500 w-5 h-5"></i> Salesman Performance</h3>
+                            <div id="dash-salesman-comm" class="space-y-2 overflow-y-auto pr-2 hide-scrollbar flex-1"></div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 lg:col-span-2 min-h-[300px] flex flex-col">
                             <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wider">Cashflow (Rev vs Exp)</h3>
@@ -330,14 +341,19 @@
                         </div>
                     </div>
 
+                    <div id="inv-credit-warning" class="hidden bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-xl mb-4 font-bold flex items-center gap-2 shadow-sm">
+                        <i data-lucide="alert-octagon" class="w-5 h-5"></i> Warning: Client has exceeded their assigned Credit Limit!
+                    </div>
+
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-center justify-between" id="wrap-multidoc">
-                        <div class="flex gap-4 items-center">
+                        <div class="flex gap-4 items-center flex-wrap">
                             <div class="wrap-multidoc-inner">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Document Type</label>
                                 <select id="inv-doc-type" onchange="window.updateDraftField('docType', this.value)" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-emerald-500">
                                     <option value="Tax Invoice">Tax Invoice</option>
                                     <option value="Proforma Invoice">Proforma Invoice</option>
                                     <option value="Quotation">Quotation / Estimate</option>
+                                    <option value="Purchase Order" class="feat-autoPO">Purchase Order</option>
                                 </select>
                             </div>
                             <div id="wrap-currency">
@@ -346,9 +362,23 @@
                                     <option value="INR">INR (₹)</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="GBP">GBP (£)</option>
                                 </select>
                             </div>
+                            <div class="feat-salesman">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Salesman / Agent</label>
+                                <input type="text" id="inv-salesman" placeholder="Tag Agent..." oninput="window.updateDraftField('salesman', this.value)" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-emerald-500 w-32">
+                            </div>
+                            <div class="feat-dispatchFlow">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Dispatch Status</label>
+                                <select id="inv-dispatch" onchange="window.updateDraftField('dispatchStatus', this.value)" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-emerald-500">
+                                    <option value="Pending">Pending</option><option value="Picked">Picked/Packed</option><option value="Out for Delivery">Out for Delivery</option><option value="Delivered">Delivered</option>
+                                </select>
+                            </div>
+                            <div class="feat-deliveryTracking">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Delivery Boy</label>
+                                <input type="text" id="inv-delivery-boy" placeholder="Driver Name" oninput="window.updateDraftField('deliveryBoy', this.value)" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-emerald-500 w-32">
+                            </div>
                         </div>
                         <div id="wrap-shipping-toggle">
-                            <button onclick="document.getElementById('adv-billing-fields').classList.toggle('hidden')" class="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"><i data-lucide="settings-2" class="w-4 h-4"></i> Toggle Advanced Fields (Shipping, PO, RCM)</button>
+                            <button onclick="document.getElementById('adv-billing-fields').classList.toggle('hidden')" class="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"><i data-lucide="settings-2" class="w-4 h-4"></i> Toggle Advanced Fields</button>
                         </div>
                     </div>
 
@@ -382,8 +412,9 @@
                                 <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="box" class="w-5 h-5"></i> Product Line Items</h3>
                                 <div class="relative mb-6">
                                     <div class="flex items-center relative">
-                                        <i data-lucide="search" class="w-5 h-5 absolute left-3 text-emerald-600 z-10"></i>
-                                        <input type="text" id="inv-product-search" class="w-full pl-10 pr-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 focus:bg-white focus:border-emerald-500 outline-none placeholder:text-emerald-700/50" placeholder="Search product to add..." autocomplete="off" oninput="handleProductSearch(this.value)" onfocus="handleProductSearch(this.value)">
+                                        <i data-lucide="scan-line" class="w-5 h-5 absolute left-3 text-emerald-600 z-10 feat-barcode hidden"></i>
+                                        <i data-lucide="search" class="w-5 h-5 absolute left-3 text-emerald-600 z-10 scan-icon-fallback"></i>
+                                        <input type="text" id="inv-product-search" class="w-full pl-10 pr-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 focus:bg-white focus:border-emerald-500 outline-none placeholder:text-emerald-700/50" placeholder="Search by Name or Scan Barcode..." autocomplete="off" oninput="handleProductSearch(this.value)" onfocus="handleProductSearch(this.value)">
                                     </div>
                                     <div id="product-suggestions" class="hidden absolute z-20 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto"></div>
                                 </div>
@@ -442,7 +473,13 @@
                             <h2 class="text-2xl font-bold text-slate-800">Purchases & Expenses</h2>
                             <p class="text-slate-500">Track vendors, outward payments, and Input Tax Credit (ITC).</p>
                         </div>
-                        <button onclick="toggleExpenseModal(true)" class="w-full md:w-auto px-4 py-2 bg-red-600 text-white rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-red-700 shadow-lg shadow-red-200 transition-all"><i data-lucide="minus-circle" class="w-4 h-4"></i> Log Expense</button>
+                        <div class="flex gap-2 w-full md:w-auto flex-wrap">
+                            <!-- F13: Supplier Bill Import -->
+                            <input type="file" id="supplier-bill-import" accept=".xlsx, .xls, .csv" class="hidden" onchange="window.handleSupplierBillImport(event)">
+                            <button onclick="document.getElementById('supplier-bill-import').click()" class="feat-supplierBill flex-1 md:flex-none px-4 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-emerald-50 transition-all"><i data-lucide="upload-cloud" class="w-4 h-4"></i> Import Supplier Bill</button>
+                            
+                            <button onclick="toggleExpenseModal(true)" class="flex-1 md:flex-none w-full md:w-auto px-4 py-2 bg-red-600 text-white rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-red-700 shadow-lg shadow-red-200 transition-all"><i data-lucide="minus-circle" class="w-4 h-4"></i> Log Expense</button>
+                        </div>
                     </div>
 
                     <div id="add-expense-form" class="hidden bg-red-50 border border-red-200 rounded-2xl p-4 md:p-6 mb-6 shadow-sm">
@@ -490,14 +527,17 @@
                             <div class="mt-4 relative max-w-md"><i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i><input type="text" id="inventory-search" placeholder="Search products..." oninput="window.renderInventory()" class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald-500"></div>
                         </div>
                         <div class="flex gap-2 w-full md:w-auto flex-wrap">
-                            <!-- Feature: Hidden File Input for Excel Import -->
                             <input type="file" id="excel-import-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="window.handleExcelImport(event)">
+                            
+                            <button onclick="window.generateAutoPO()" class="feat-autoPO flex-1 md:flex-none px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-blue-100 transition-all"><i data-lucide="truck" class="w-4 h-4"></i> Auto PO</button>
+                            <button onclick="window.stockValuationReport()" class="feat-fifoValuation flex-1 md:flex-none px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-purple-100 transition-all"><i data-lucide="pie-chart" class="w-4 h-4"></i> Valuation</button>
                             <button onclick="document.getElementById('excel-import-input').click()" class="flex-1 md:flex-none px-4 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-emerald-50 transition-all"><i data-lucide="upload" class="w-4 h-4"></i> Import Excel</button>
                             <button onclick="window.exportInventoryCSV()" class="flex-1 md:flex-none px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-slate-50 transition-all"><i data-lucide="download" class="w-4 h-4"></i> Export CSV</button>
                             <button onclick="toggleProductModal(true)" class="flex-1 md:flex-none px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"><i data-lucide="plus" class="w-4 h-4"></i> Add Product</button>
                         </div>
                     </div>
-                    <div id="add-product-form" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 md:p-6 mb-6">
+                    
+                    <div id="add-product-form" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 md:p-6 mb-6 shadow-sm">
                         <h3 class="font-bold mb-4" id="add-product-form-title">Add New Item</h3>
                         <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                             <div class="md:col-span-2"><label class="text-sm font-medium text-slate-700 block mb-1">Product Name</label><input type="text" id="new-prod-name" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
@@ -507,8 +547,13 @@
                             </div>
                             <div class="wrap-hsn"><label class="text-sm font-medium text-slate-700 block mb-1">HSN/SAC Code</label><input type="text" id="new-prod-hsn" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
                             
+                            <div class="feat-barcode"><label class="text-sm font-medium text-slate-700 block mb-1">Barcode (EAN/UPC)</label><input type="text" id="new-prod-barcode" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+                            <div class="feat-multiGodown"><label class="text-sm font-medium text-slate-700 block mb-1">Warehouse / Godown</label><input type="text" id="new-prod-godown" placeholder="Main Store" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+
                             <div class="wrap-margin"><label class="text-sm font-medium text-slate-700 block mb-1">Cost Price (₹)</label><input type="number" id="new-prod-cost" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none" placeholder="Purchase price"></div>
-                            <div><label class="text-sm font-medium text-slate-700 block mb-1">Selling Rate (₹)</label><input type="number" id="new-prod-rate" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+                            <div><label class="text-sm font-medium text-slate-700 block mb-1">Standard Rate (₹)</label><input type="number" id="new-prod-rate" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+                            <div class="feat-tieredPricing"><label class="text-sm font-medium text-slate-700 block mb-1">Retail Rate (₹)</label><input type="number" id="new-prod-rate-retail" placeholder="Optional" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+                            <div class="feat-tieredPricing"><label class="text-sm font-medium text-slate-700 block mb-1">Distributor Rate (₹)</label><input type="number" id="new-prod-rate-dist" placeholder="Optional" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
                             
                             <div>
                                 <label class="text-sm font-medium text-slate-700 block mb-1">GST %</label>
@@ -516,10 +561,10 @@
                             </div>
                             <div><label class="text-sm font-medium text-slate-700 block mb-1">Stock Qty</label><input type="number" id="new-prod-stock" value="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
                             <div class="wrap-batch"><label class="text-sm font-medium text-slate-700 block mb-1">Batch No.</label><input type="text" id="new-prod-batch" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
-                            <div class="wrap-batch"><label class="text-sm font-medium text-slate-700 block mb-1">Expiry Date</label><input type="month" id="new-prod-expiry" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
-                            <div class="flex gap-2 md:col-span-2 md:justify-end mt-2">
+                            <div class="wrap-batch"><label class="text-sm font-medium text-slate-700 block mb-1">Expiry Date</label><input type="date" id="new-prod-expiry" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+                            <div class="flex gap-2 md:col-span-6 md:justify-end mt-2 pt-4 border-t border-emerald-200/50">
                                 <button onclick="toggleProductModal(false)" class="px-6 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-medium">Cancel</button>
-                                <button onclick="saveProduct()" class="px-6 py-2 bg-emerald-600 text-white rounded-xl font-medium">Save Product</button>
+                                <button onclick="saveProduct()" class="px-6 py-2 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700">Save Product</button>
                             </div>
                         </div>
                     </div>
@@ -574,10 +619,11 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
                         <div class="w-full md:w-auto">
                             <h2 class="text-2xl font-bold text-slate-800">Client CRM & Ledgers</h2>
-                            <p class="text-slate-500">Manage patient records, clinical notes, and generate Statement of Accounts.</p>
+                            <p class="text-slate-500">Manage patient records, credit limits, tiered pricing, and Statement of Accounts.</p>
                             <div class="mt-4 relative max-w-md"><i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i><input type="text" id="clients-search" placeholder="Search patients..." oninput="window.renderClients()" class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald-500"></div>
                         </div>
                         <div class="flex gap-2 w-full md:w-auto flex-wrap">
+                            <button onclick="window.copyB2BLink()" class="feat-b2bPortal flex-1 md:flex-none px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-indigo-100 transition-all"><i data-lucide="link" class="w-4 h-4"></i> B2B Portal Link</button>
                             <button onclick="window.exportClientsCSV()" class="flex-1 md:flex-none px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-slate-50 transition-all"><i data-lucide="download" class="w-4 h-4"></i> Export CSV</button>
                             <button onclick="window.toggleClientModal(true, true)" class="flex-1 md:flex-none px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium flex justify-center items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"><i data-lucide="user-plus" class="w-4 h-4"></i> Add Client</button>
                         </div>
@@ -589,6 +635,10 @@
                             <div><label class="text-sm font-medium text-slate-700 block mb-1">Mobile</label><input type="text" id="edit-client-mobile" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
                             <div><label class="text-sm font-medium text-slate-700 block mb-1">GSTIN</label><input type="text" id="edit-client-gstin" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
                             <div><label class="text-sm font-medium text-slate-700 block mb-1">Address</label><input type="text" id="edit-client-address" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+                            
+                            <div class="feat-tieredPricing"><label class="text-sm font-medium text-slate-700 block mb-1">Price Tier</label><select id="edit-client-tier" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-none"><option value="standard">Standard / Default</option><option value="retail">Retailer</option><option value="distributor">Distributor</option></select></div>
+                            <div class="feat-creditLimits"><label class="text-sm font-medium text-slate-700 block mb-1">Credit Limit (₹)</label><input type="number" id="edit-client-limit" placeholder="0 = No Limit" class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none"></div>
+
                             <div class="md:col-span-4"><label class="text-sm font-medium text-slate-700 block mb-1">General Notes</label><textarea id="edit-client-notes" rows="2" placeholder="Allergies, preferences..." class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none resize-none"></textarea></div>
                         </div>
                         
@@ -628,18 +678,35 @@
                             <h3 class="font-bold text-slate-800 border-b pb-2 flex items-center gap-2"><i data-lucide="toggle-right" class="w-5 h-5 text-emerald-600"></i> Module & Feature Toggles</h3>
                             <p class="text-xs text-slate-500 mb-4">Enable or disable advanced ERP features to keep your interface clean and strictly tailored to your workflow.</p>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm font-medium text-slate-700" id="feature-toggles-container">
-                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-expenses" class="w-4 h-4 text-emerald-600 rounded"> Expense Tracking Module</label>
-                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-multiDoc" class="w-4 h-4 text-emerald-600 rounded"> Proformas & Quotations</label>
-                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-currency" class="w-4 h-4 text-emerald-600 rounded"> Multi-Currency Billing</label>
-                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-shipping" class="w-4 h-4 text-emerald-600 rounded"> Adv. Shipping & PO Fields</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-expenses" class="w-4 h-4 text-emerald-600 rounded"> Expense Tracking</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-multiDoc" class="w-4 h-4 text-emerald-600 rounded"> Proformas / Quotes</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-currency" class="w-4 h-4 text-emerald-600 rounded"> Multi-Currency</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-shipping" class="w-4 h-4 text-emerald-600 rounded"> Shipping & PO Fields</label>
                                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-tds" class="w-4 h-4 text-emerald-600 rounded"> TDS Deduction %</label>
                                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-rcm" class="w-4 h-4 text-emerald-600 rounded"> Reverse Charge (RCM)</label>
                                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-hsn" class="w-4 h-4 text-emerald-600 rounded"> HSN/SAC Codes</label>
                                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-dueDate" class="w-4 h-4 text-emerald-600 rounded"> Invoice Due Dates</label>
-                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-ledger" class="w-4 h-4 text-emerald-600 rounded"> Client Ledger / Statement</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-ledger" class="w-4 h-4 text-emerald-600 rounded"> Client Ledger PDF</label>
                                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-creditNote" class="w-4 h-4 text-emerald-600 rounded"> Credit Notes & Refunds</label>
-                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-margin" class="w-4 h-4 text-emerald-600 rounded"> Profit Margin Calculator</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-margin" class="w-4 h-4 text-emerald-600 rounded"> Profit Margin Calc</label>
                                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="feat-batch" class="w-4 h-4 text-emerald-600 rounded"> Batch & Expiry Tracking</label>
+
+                                <div class="col-span-3 border-t border-slate-100 my-1"></div>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-barcode" class="w-4 h-4 text-emerald-600 rounded"> Barcode Scanner Mode</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-multiGodown" class="w-4 h-4 text-emerald-600 rounded"> Multi-Godown / Warehouse</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-nearExpiry" class="w-4 h-4 text-emerald-600 rounded"> Near-Expiry Dashboard</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-autoPO" class="w-4 h-4 text-emerald-600 rounded"> Auto Purchase Orders</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-tieredPricing" class="w-4 h-4 text-emerald-600 rounded"> Tiered Pricing (Price Lists)</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-creditLimits" class="w-4 h-4 text-emerald-600 rounded"> Client Credit Limits</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-salesman" class="w-4 h-4 text-emerald-600 rounded"> Salesman Commissions</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-b2bPortal" class="w-4 h-4 text-emerald-600 rounded"> B2B Portal Link</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-dispatchFlow" class="w-4 h-4 text-emerald-600 rounded"> Dispatch Workflow</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-deliveryTracking" class="w-4 h-4 text-emerald-600 rounded"> Delivery Boy Tracking</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-bulkPayment" class="w-4 h-4 text-emerald-600 rounded"> Ledger Bulk Settlements</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-eInvoice" class="w-4 h-4 text-emerald-600 rounded"> E-Invoice JSON Export</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-supplierBill" class="w-4 h-4 text-emerald-600 rounded"> Supplier Bill OCR/Import</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-fifoValuation" class="w-4 h-4 text-emerald-600 rounded"> FIFO Stock Valuation</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-indigo-700 font-bold"><input type="checkbox" id="feat-schemes" class="w-4 h-4 text-emerald-600 rounded"> Schemes & Freebies (BOM)</label>
                             </div>
                         </div>
 
@@ -761,10 +828,11 @@
 
     <div id="ledger-modal" class="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center p-4">
         <div class="bg-slate-100 rounded-2xl shadow-2xl w-full max-w-4xl h-[95vh] flex flex-col overflow-hidden relative">
-            <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center z-10 shrink-0 shadow-sm">
+            <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center z-10 shrink-0 shadow-sm flex-wrap gap-2">
                 <h3 class="font-bold text-slate-800 flex items-center gap-2"><i data-lucide="book-open"></i> Statement of Accounts</h3>
-                <div class="flex gap-2">
-                    <button onclick="window.downloadLedgerPDF()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium flex gap-2 items-center hover:bg-blue-700 transition-colors"><i data-lucide="download" class="w-4 h-4"></i> Export Ledger</button>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="window.processBulkPayment()" class="feat-bulkPayment px-4 py-2 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-sm font-bold flex gap-2 items-center hover:bg-emerald-200 transition-colors"><i data-lucide="check-square" class="w-4 h-4"></i> Receive Bulk Payment</button>
+                    <button onclick="window.downloadLedgerPDF()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium flex gap-2 items-center hover:bg-blue-700 transition-colors"><i data-lucide="download" class="w-4 h-4"></i> Export PDF</button>
                     <button onclick="window.closeLedgerModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"><i data-lucide="x" class="w-4 h-4"></i> Close</button>
                 </div>
             </div>
@@ -781,8 +849,8 @@
 
     <div id="pdf-loading-overlay" class="fixed inset-0 z-[9999] bg-white hidden flex-col items-center justify-center">
         <i data-lucide="loader-2" class="w-12 h-12 text-emerald-600 animate-spin mb-4"></i>
-        <h2 class="text-2xl font-bold text-slate-800 mb-2">Generating High-Res PDF...</h2>
-        <p class="text-slate-500">Please do not close or scroll the application.</p>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Generating...</h2>
+        <p class="text-slate-500">Please wait.</p>
     </div>
 
     <!-- Firebase SDK & Core Logic -->
@@ -806,7 +874,8 @@
         }
 
         const currencyMap = { 'INR': '₹', 'USD': '$', 'EUR': '€', 'GBP': '£' };
-        const defaultFeatures = { expenses: true, multiDoc: true, currency: true, shipping: true, tds: true, rcm: true, hsn: true, dueDate: true, ledger: true, creditNote: true, margin: true, batch: true };
+        // Feature F1-F15 Enabled By Default in State Initializer
+        const defaultFeatures = { expenses: true, multiDoc: true, currency: true, shipping: true, tds: true, rcm: true, hsn: true, dueDate: true, ledger: true, creditNote: true, margin: true, batch: true, barcode: true, multiGodown: true, nearExpiry: true, autoPO: true, tieredPricing: true, creditLimits: true, salesman: true, b2bPortal: true, dispatchFlow: true, deliveryTracking: true, bulkPayment: true, eInvoice: true, supplierBill: true, fifoValuation: true, schemes: true };
 
         // Centralized State Factory to prevent cross-account leaking
         function getInitialState() {
@@ -815,7 +884,7 @@
                 settings: { businessName: '', owner: '', gstin: '', address: '', phone: '', upi: '', logo: '', signature: '', seal: '', bankName: '', bankAcc: '', bankIfsc: '', template: 'modern', customTerms: '', logoDisplay: 'both', pinEnabled: false, pin: '', lockDate: '', features: {...defaultFeatures} },
                 editingProductId: null, editingClientId: null, editingExpenseId: null,
                 signupLogoBase64: '', signupSigBase64: '', newExpenseReceiptBase64: '',
-                draft: { id: '', docType: 'Tax Invoice', currency: 'INR', items: [], discount: 0, discountType: 'fixed', tds: 0, isRcm: false, poNo: '', vehicleNo: '', ewayBill: '', paymentMode: 'upi', paymentStatus: 'unpaid', notes: '', dueDate: '', client: { name: '', mobile: '', gstin: '', address: '' } }
+                draft: { id: '', docType: 'Tax Invoice', currency: 'INR', items: [], discount: 0, discountType: 'fixed', tds: 0, isRcm: false, poNo: '', vehicleNo: '', ewayBill: '', paymentMode: 'upi', paymentStatus: 'unpaid', notes: '', dueDate: '', salesman: '', dispatchStatus: 'Pending', deliveryBoy: '', client: { name: '', mobile: '', gstin: '', address: '', priceTier: 'standard' } }
             };
         }
 
@@ -844,7 +913,79 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         };
 
-        // Excel Import Function
+        // F13: Supplier Bill Upload
+        window.handleSupplierBillImport = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const data = evt.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (jsonData.length === 0) return window.showToast("Supplier Excel sheet is empty.", "warning");
+
+                    const batch = writeBatch(db);
+                    const uid = window.AppState.user.uid;
+                    let stockCount = 0; let totalBillAmount = 0;
+
+                    jsonData.forEach((row) => {
+                        const name = row.Name || row.Product || row.Item || row['Product Name'];
+                        if (!name) return;
+
+                        const addQty = Number(row.Stock || row.Quantity || row.Qty || 0);
+                        const cost = Number(row.Cost || row['Purchase Price'] || row['Purchase Rate'] || 0);
+                        const gst = Number(row.GST || row.Tax || 0);
+                        
+                        // Create or update logic
+                        const existingProd = window.AppState.products.find(p => p.name.toLowerCase() === name.toLowerCase());
+                        
+                        if (existingProd) {
+                            const ref = doc(db, 'artifacts', appId, 'users', uid, 'products', existingProd.id);
+                            batch.update(ref, { 
+                                stock: (Number(existingProd.stock) || 0) + addQty,
+                                cost: cost > 0 ? cost : existingProd.cost
+                            });
+                        } else {
+                            const newProdRef = doc(collection(db, 'artifacts', appId, 'users', uid, 'products'));
+                            batch.set(newProdRef, {
+                                name, category: row.Category || 'Medicine', hsn: String(row.HSN || ''), 
+                                cost: cost, rate: Number(row.Rate || row['Selling Price'] || cost * 1.5), 
+                                gst: gst, stock: addQty, batch: String(row.Batch || ''), expiry: String(row.Expiry || ''),
+                                isHidden: false, createdAt: serverTimestamp()
+                            });
+                        }
+                        stockCount++;
+                        totalBillAmount += (addQty * cost) * (1 + (gst/100));
+                    });
+
+                    if (stockCount > 0) {
+                        // Create expense record automatically
+                        const expRef = doc(collection(db, 'artifacts', appId, 'users', uid, 'expenses'));
+                        batch.set(expRef, {
+                            date: new Date().toISOString().split('T')[0], category: 'Inventory Purchase', 
+                            amount: totalBillAmount, gstAmount: 0, desc: `Auto-Import: ${file.name}`, createdAt: serverTimestamp()
+                        });
+
+                        await batch.commit();
+                        window.showToast(`Imported ${stockCount} items and logged purchase expense!`);
+                    } else {
+                        window.showToast("No valid products found in Excel.", "warning");
+                    }
+                    e.target.value = ''; // Reset input
+                } catch (err) {
+                    window.showToast("Failed to parse Supplier Excel file.", "error");
+                    console.error(err);
+                }
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        // Excel Import Function (General)
         window.handleExcelImport = function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -865,7 +1006,6 @@
                     let count = 0;
 
                     jsonData.forEach((row) => {
-                        // Intelligent mapping
                         const name = row.Name || row.Product || row.Item || row['Product Name'];
                         if (!name) return;
 
@@ -877,10 +1017,12 @@
                         const category = row.Category || 'Medicine';
                         const batchNo = String(row.Batch || row['Batch No'] || '');
                         const expiry = String(row.Expiry || row['Expiry Date'] || '');
+                        const barcode = String(row.Barcode || row.UPC || row.EAN || '');
+                        const godown = String(row.Warehouse || row.Godown || 'Main Store');
 
                         const newProdRef = doc(collection(db, 'artifacts', appId, 'users', uid, 'products'));
                         batch.set(newProdRef, {
-                            name, category, hsn, cost, rate, gst, stock, batch: batchNo, expiry,
+                            name, category, hsn, cost, rate, gst, stock, batch: batchNo, expiry, barcode, godown,
                             isHidden: false, createdAt: serverTimestamp()
                         });
                         count++;
@@ -909,7 +1051,7 @@
             const bgColor = type === 'error' ? 'bg-red-600' : (type === 'warning' ? 'bg-amber-500' : 'bg-emerald-600');
             const icon = type === 'error' ? 'alert-circle' : (type === 'warning' ? 'alert-triangle' : 'check-circle');
 
-            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white font-medium transform transition-all duration-300 translate-y-[-20px] opacity-0 ${bgColor} pointer-events-auto`;
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white font-medium transform transition-all duration-300 translate-y-[-20px] opacity-0 ${bgColor} pointer-events-auto z-[9999]`;
             toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
 
             container.appendChild(toast);
@@ -1170,11 +1312,24 @@
         window.applyFeatureVisibility = function() {
             const check = (id, key) => { const el = document.getElementById(id); if(el) el.style.display = window.isFeatureEnabled(key) ? '' : 'none'; };
             const checkClass = (cls, key) => { document.querySelectorAll('.'+cls).forEach(el => el.style.display = window.isFeatureEnabled(key) ? '' : 'none'); };
+            const toggleClass = (cls, key) => { document.querySelectorAll('.'+cls).forEach(el => window.isFeatureEnabled(key) ? el.classList.remove('hidden') : el.classList.add('hidden')); };
             
             check('wrap-multidoc', 'multiDoc'); check('wrap-currency', 'currency'); check('wrap-shipping-toggle', 'shipping');
             check('wrap-rcm', 'rcm'); check('wrap-tds', 'tds'); check('wrap-duedate', 'dueDate');
+            
             checkClass('wrap-hsn', 'hsn'); checkClass('wrap-margin', 'margin'); checkClass('wrap-batch', 'batch');
             checkClass('wrap-expenses-stat', 'expenses');
+            
+            // Features F1-F15 Classes
+            toggleClass('feat-barcode', 'barcode'); toggleClass('feat-multiGodown', 'multiGodown'); toggleClass('feat-nearExpiry', 'nearExpiry');
+            toggleClass('feat-autoPO', 'autoPO'); toggleClass('feat-tieredPricing', 'tieredPricing'); toggleClass('feat-creditLimits', 'creditLimits');
+            toggleClass('feat-salesman', 'salesman'); toggleClass('feat-b2bPortal', 'b2bPortal'); toggleClass('feat-dispatchFlow', 'dispatchFlow');
+            toggleClass('feat-deliveryTracking', 'deliveryTracking'); toggleClass('feat-bulkPayment', 'bulkPayment'); toggleClass('feat-eInvoice', 'eInvoice');
+            toggleClass('feat-supplierBill', 'supplierBill'); toggleClass('feat-fifoValuation', 'fifoValuation'); toggleClass('feat-schemes', 'schemes');
+
+            // Handle Barcode Search Icon Swap
+            const fallbackIcon = document.querySelector('.scan-icon-fallback');
+            if(fallbackIcon) fallbackIcon.classList.toggle('hidden', window.isFeatureEnabled('barcode'));
         }
 
         function renderNavigation() {
@@ -1315,6 +1470,33 @@
             const salesMap = {}; finalized.forEach(inv => inv.items.forEach(item => salesMap[item.name] = (salesMap[item.name] || 0) + Number(item.qty)));
             const topSellers = Object.entries(salesMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
             setHTML('dash-top-sellers', topSellers.map(ts => `<div class="flex justify-between items-center p-3 bg-emerald-50 rounded-xl mb-2"><div class="text-sm font-medium text-emerald-800">${ts[0]}</div><div class="text-xs font-bold text-emerald-700">${ts[1]} sold</div></div>`).join('') || '<div class="text-sm text-slate-400 p-4 text-center">No sales data yet.</div>');
+
+            // F3: Near Expiry Dashboard
+            if(window.isFeatureEnabled('nearExpiry')) {
+                const soonExpiring = products.filter(p => {
+                    if(!p.expiry || p.isHidden) return false;
+                    const exp = new Date(p.expiry);
+                    const diffDays = (exp - today) / (1000 * 60 * 60 * 24);
+                    return diffDays >= 0 && diffDays <= 90;
+                }).sort((a,b) => new Date(a.expiry) - new Date(b.expiry));
+                
+                setHTML('dash-near-expiry', soonExpiring.map(p => {
+                    const daysLeft = Math.ceil((new Date(p.expiry) - today) / (1000 * 60 * 60 * 24));
+                    return `<div class="flex justify-between items-center p-3 bg-orange-50 rounded-xl mb-2"><div class="text-sm font-medium text-orange-900">${p.name} <span class="text-[10px] text-orange-600 block">Batch: ${p.batch||'N/A'}</span></div><div class="text-xs font-bold ${daysLeft < 30 ? 'text-red-600' : 'text-orange-600'} bg-white px-2 py-1 rounded-full border border-orange-200">${daysLeft} days left</div></div>`;
+                }).join('') || '<div class="text-sm text-slate-400 p-4 text-center">No items expiring within 90 days.</div>');
+            }
+
+            // F7: Salesman Dashboard
+            if(window.isFeatureEnabled('salesman')) {
+                const commMap = {};
+                finalized.forEach(inv => {
+                    if(inv.salesman) {
+                        commMap[inv.salesman] = (commMap[inv.salesman] || 0) + Number(inv.grandTotal);
+                    }
+                });
+                const topSalesmen = Object.entries(commMap).sort((a,b) => b[1] - a[1]);
+                setHTML('dash-salesman-comm', topSalesmen.map(sm => `<div class="flex justify-between items-center p-3 bg-indigo-50 rounded-xl mb-2"><div class="text-sm font-medium text-indigo-900 flex items-center gap-2"><div class="w-6 h-6 bg-indigo-200 rounded-full flex justify-center items-center text-[10px] font-bold">${sm[0].charAt(0).toUpperCase()}</div> ${sm[0]}</div><div class="text-xs font-bold text-indigo-700 bg-white px-2 py-1 rounded border border-indigo-100">${formatINR(sm[1])} generated</div></div>`).join('') || '<div class="text-sm text-slate-400 p-4 text-center">No tagged salesman sales found.</div>');
+            }
         }
 
         window.renderDaybook = function() {
@@ -1400,32 +1582,87 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
+        // F5: Tiered Pricing + F1: Barcode Fast Adding
+        window.handleProductSearch = function(val) {
+            const suggDiv = document.getElementById('product-suggestions'); if(!suggDiv) return;
+            if(!val) { suggDiv.classList.add('hidden'); return; }
+
+            // F1: Barcode Direct Match Feature
+            if(window.isFeatureEnabled('barcode') && val.length > 5) {
+                const exactMatch = window.AppState.products.find(p => p.barcode === val && !p.isHidden);
+                if(exactMatch) {
+                    window.addDraftItem(exactMatch);
+                    window.showToast("Barcode Scanned!", "success");
+                    return;
+                }
+            }
+
+            const matches = window.AppState.products.filter(p => !p.isHidden && (p.name.toLowerCase().includes(val.toLowerCase()) || (p.barcode && p.barcode.includes(val))));
+            if(matches.length === 0) { suggDiv.classList.add('hidden'); return; }
+            
+            const clientTier = window.AppState.draft.client.priceTier || 'standard';
+            
+            suggDiv.innerHTML = matches.map(p => {
+                let applicableRate = p.rate;
+                if(clientTier === 'retail' && p.rateRetail) applicableRate = p.rateRetail;
+                else if(clientTier === 'distributor' && p.rateDist) applicableRate = p.rateDist;
+                
+                return `<div class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 flex justify-between items-center" onclick='window.addDraftItem(${JSON.stringify({...p, applicableRate}).replace(/'/g, "&#39;")})'><div><div class="font-medium text-slate-800">${p.name} <span class="text-[9px] text-slate-400 ml-1 uppercase">${clientTier !== 'standard' ? `(${clientTier})` : ''}</span></div><div class="text-[10px] text-slate-400">Stock: ${p.stock || 0} ${p.godown ? `• ${p.godown}` : ''}</div></div><div class="text-right"><div class="font-bold text-emerald-700">₹${applicableRate}</div></div></div>`;
+            }).join('');
+            suggDiv.classList.remove('hidden');
+        }
+
+        window.addDraftItem = function(p) { 
+            const finalRate = p.applicableRate || p.rate;
+            window.AppState.draft.items.push({ id: Date.now().toString(), productId: p.id, name: p.name, rate: Number(finalRate), qty: 1, gst: Number(p.gst), hsn: p.hsn || '', batch: p.batch || '', expiry: p.expiry || '', isFreebie: false }); 
+            setVal('inv-product-search', ''); const sugg = document.getElementById('product-suggestions'); if(sugg) sugg.classList.add('hidden'); window.updateInvoiceUI(); 
+        }
+
         window.handleClientSearch = function(val) {
             const suggDiv = document.getElementById('client-suggestions'); if(!suggDiv) return;
             if(!val) { suggDiv.classList.add('hidden'); return; }
             const matches = window.AppState.clients.filter(c => c.name.toLowerCase().includes(val.toLowerCase()));
             if(matches.length === 0) { suggDiv.classList.add('hidden'); return; }
-            suggDiv.innerHTML = matches.map(c => `<div class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-50" onclick='window.selectClient(${JSON.stringify(c).replace(/'/g, "&#39;")})'><div class="font-medium text-slate-800">${c.name}</div><div class="text-xs text-slate-500">Mob: ${c.mobile || 'N/A'}</div></div>`).join('');
+            suggDiv.innerHTML = matches.map(c => `<div class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-50" onclick='window.selectClient(${JSON.stringify(c).replace(/'/g, "&#39;")})'><div class="font-medium text-slate-800">${c.name} ${c.priceTier && c.priceTier !== 'standard' ? `<span class="bg-slate-200 text-slate-600 px-1 py-0.5 rounded text-[9px] uppercase">${c.priceTier}</span>` : ''}</div><div class="text-xs text-slate-500">Mob: ${c.mobile || 'N/A'}</div></div>`).join('');
             suggDiv.classList.remove('hidden');
         }
-        window.selectClient = function(c) { window.AppState.draft.client = c; window.restoreDraftToUI(); const sugg = document.getElementById('client-suggestions'); if(sugg) sugg.classList.add('hidden'); window.updateInvoiceUI(); }
 
-        window.handleProductSearch = function(val) {
-            const suggDiv = document.getElementById('product-suggestions'); if(!suggDiv) return;
-            if(!val) { suggDiv.classList.add('hidden'); return; }
-            const matches = window.AppState.products.filter(p => !p.isHidden && p.name.toLowerCase().includes(val.toLowerCase()));
-            if(matches.length === 0) { suggDiv.classList.add('hidden'); return; }
-            suggDiv.innerHTML = matches.map(p => `<div class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 flex justify-between items-center" onclick='window.addDraftItem(${JSON.stringify(p).replace(/'/g, "&#39;")})'><div><div class="font-medium text-slate-800">${p.name}</div><div class="text-[10px] text-slate-400">Stock: ${p.stock || 0}</div></div><div class="text-right"><div class="font-bold text-emerald-700">₹${p.rate}</div></div></div>`).join('');
-            suggDiv.classList.remove('hidden');
+        // F6: Credit Limit Fetch on Client Select
+        window.selectClient = function(c) { 
+            window.AppState.draft.client = c; 
+            window.restoreDraftToUI(); 
+            const sugg = document.getElementById('client-suggestions'); if(sugg) sugg.classList.add('hidden'); 
+            window.updateInvoiceUI(); 
         }
-        window.addDraftItem = function(p) { window.AppState.draft.items.push({ id: Date.now().toString(), productId: p.id, name: p.name, rate: Number(p.rate), qty: 1, gst: Number(p.gst), hsn: p.hsn || '', batch: p.batch || '', expiry: p.expiry || '' }); setVal('inv-product-search', ''); const sugg = document.getElementById('product-suggestions'); if(sugg) sugg.classList.add('hidden'); window.updateInvoiceUI(); }
+
         window.updateDraftField = function(field, val) { window.AppState.draft[field] = val; window.updateInvoiceUI(); }
-        window.updateDraftItem = function(id, field, val) { const item = window.AppState.draft.items.find(i => i.id === id); if(item) { item[field] = field === 'qty' || field === 'rate' ? Number(val) : val; window.updateInvoiceUI(); } }
+        
+        window.updateDraftItem = function(id, field, val) { 
+            const item = window.AppState.draft.items.find(i => i.id === id); 
+            if(item) { 
+                if(field === 'isFreebie') {
+                    item.isFreebie = val;
+                } else {
+                    item[field] = field === 'qty' || field === 'rate' ? Number(val) : val; 
+                }
+                window.updateInvoiceUI(); 
+            } 
+        }
+
         window.removeDraftItem = function(id) { window.AppState.draft.items = window.AppState.draft.items.filter(i => i.id !== id); window.updateInvoiceUI(); }
         window.setPaymentMode = function(mode) { window.AppState.draft.paymentMode = mode; window.updateInvoiceUI(); }
 
         window.calculateInvoiceTotals = function() {
-            let subtotal = 0, totalTax = 0; window.AppState.draft.items.forEach(item => { const lineTotal = Number(item.qty) * Number(item.rate); totalTax += lineTotal * (Number(item.gst) / 100); subtotal += lineTotal; });
+            let subtotal = 0, totalTax = 0; 
+            
+            window.AppState.draft.items.forEach(item => { 
+                // F15: Promotional Freebies - if freebie, rate behaves as 0 for calculation
+                const effectiveRate = item.isFreebie ? 0 : Number(item.rate);
+                const lineTotal = Number(item.qty) * effectiveRate; 
+                totalTax += lineTotal * (Number(item.gst) / 100); 
+                subtotal += lineTotal; 
+            });
+            
             let discountInput = Number(window.AppState.draft.discount) || 0; let discountAmt = window.AppState.draft.discountType === 'percent' ? (subtotal * (discountInput / 100)) : discountInput;
             let tdsAmt = Number(window.AppState.draft.tds) > 0 ? (subtotal * (Number(window.AppState.draft.tds) / 100)) : 0;
             const grandTotal = Math.max(0, subtotal + totalTax - discountAmt - tdsAmt);
@@ -1445,6 +1682,21 @@
                     qrWrapper.innerHTML = `<img src="${window.generateLocalQR(upiStr)}" class="w-[140px] h-[140px] block mx-auto rounded">`;
                 } else { qrWrapper.innerHTML = `<div class="w-[140px] h-[140px] bg-slate-100 flex items-center justify-center text-slate-400 text-xs text-center">Add items<br>to generate QR</div>`; }
             }
+
+            // F6: Credit Limit Checker
+            const warnBox = document.getElementById('inv-credit-warning');
+            if(window.isFeatureEnabled('creditLimits') && window.AppState.draft.client.name && window.AppState.draft.docType === 'Tax Invoice') {
+                const clientObj = window.AppState.clients.find(c => c.name.toLowerCase() === window.AppState.draft.client.name.toLowerCase());
+                if(clientObj && Number(clientObj.creditLimit) > 0) {
+                    const pastUnpaid = window.AppState.invoices.filter(i => i.client.name === clientObj.name && i.status === 'final' && i.paymentStatus !== 'paid' && i.status !== 'void').reduce((sum, i) => sum + Number(i.grandTotal), 0);
+                    if((pastUnpaid + grandTotal) > Number(clientObj.creditLimit)) {
+                        if(warnBox) warnBox.classList.remove('hidden');
+                    } else {
+                        if(warnBox) warnBox.classList.add('hidden');
+                    }
+                } else { if(warnBox) warnBox.classList.add('hidden'); }
+            } else { if(warnBox) warnBox.classList.add('hidden'); }
+
             return { subtotal, totalTax, grandTotal, discountAmountCalculated: discountAmt, tdsCalculated: tdsAmt };
         }
 
@@ -1454,6 +1706,7 @@
             setVal('inv-due-date', d.dueDate || ''); setVal('inv-discount', d.discount || 0); setVal('inv-discount-type', d.discountType || 'fixed'); setVal('inv-notes', d.notes || '');
             setVal('inv-doc-type', d.docType || 'Tax Invoice'); setVal('inv-currency', d.currency || 'INR'); setVal('inv-tds', d.tds || 0);
             setVal('inv-po-no', d.poNo || ''); setVal('inv-vehicle', d.vehicleNo || ''); setVal('inv-eway', d.ewayBill || ''); 
+            setVal('inv-salesman', d.salesman || ''); setVal('inv-dispatch', d.dispatchStatus || 'Pending'); setVal('inv-delivery-boy', d.deliveryBoy || '');
             const rcmEl = document.getElementById('inv-rcm'); if(rcmEl) rcmEl.checked = d.isRcm || false;
         }
 
@@ -1461,12 +1714,28 @@
             localStorage.setItem('ayur_draft_pro', JSON.stringify(window.AppState.draft));
             const items = window.AppState.draft.items; const curr = window.AppState.draft.currency || 'INR';
             
-            let tbodyHtml = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">No items added yet.</td></tr>`;
+            let tbodyHtml = `<tr><td colspan="8" class="p-6 text-center text-slate-400 italic">No items added yet.</td></tr>`;
             if(items.length > 0) {
-                tbodyHtml = items.map(item => `<tr class="border-b border-slate-100 last:border-0 bg-white"><td class="p-3 font-medium text-slate-800 min-w-[120px]">${item.name} ${(window.isFeatureEnabled('batch') && (item.batch || item.expiry)) ? `<br><span class="text-[9px] text-slate-400">B:${item.batch||'-'} E:${item.expiry||'-'}</span>` : ''}</td>${window.isFeatureEnabled('hsn') ? `<td class="p-3"><input type="text" class="w-16 p-1 border border-slate-200 rounded outline-none text-xs" value="${item.hsn || ''}" onchange="window.updateDraftItem('${item.id}', 'hsn', this.value)" placeholder="HSN"></td>` : ''}<td class="p-3"><input type="number" min="1" class="w-16 p-1 border border-slate-200 rounded outline-none" value="${item.qty}" onchange="window.updateDraftItem('${item.id}', 'qty', this.value)"></td><td class="p-3"><input type="number" class="w-20 p-1 border border-slate-200 rounded outline-none" value="${item.rate}" onchange="window.updateDraftItem('${item.id}', 'rate', this.value)"></td><td class="p-3 text-slate-600">${item.gst}%</td><td class="p-3 text-right font-medium text-emerald-700">${window.formatCurrency(Number(item.qty) * Number(item.rate), curr)}</td><td class="p-3 text-center"><button onclick="window.removeDraftItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
+                tbodyHtml = items.map(item => {
+                    // F15: Freebie toggle logic
+                    const isFree = item.isFreebie;
+                    const displayTotal = isFree ? 0 : (Number(item.qty) * Number(item.rate));
+                    
+                    return `<tr class="border-b border-slate-100 last:border-0 bg-white ${isFree ? 'opacity-70 bg-emerald-50' : ''}">
+                    <td class="p-3 font-medium text-slate-800 min-w-[120px]">${item.name} ${(window.isFeatureEnabled('batch') && (item.batch || item.expiry)) ? `<br><span class="text-[9px] text-slate-400">B:${item.batch||'-'} E:${item.expiry||'-'}</span>` : ''}</td>
+                    ${window.isFeatureEnabled('hsn') ? `<td class="p-3"><input type="text" class="w-16 p-1 border border-slate-200 rounded outline-none text-xs ${isFree ? 'bg-transparent' : ''}" value="${item.hsn || ''}" onchange="window.updateDraftItem('${item.id}', 'hsn', this.value)" placeholder="HSN"></td>` : ''}
+                    <td class="p-3"><input type="number" min="1" class="w-16 p-1 border border-slate-200 rounded outline-none ${isFree ? 'bg-transparent' : ''}" value="${item.qty}" onchange="window.updateDraftItem('${item.id}', 'qty', this.value)"></td>
+                    <td class="p-3"><input type="number" class="w-20 p-1 border border-slate-200 rounded outline-none ${isFree ? 'bg-transparent text-slate-400 line-through' : ''}" value="${item.rate}" onchange="window.updateDraftItem('${item.id}', 'rate', this.value)" ${isFree ? 'readonly' : ''}></td>
+                    <td class="p-3 text-slate-600">${isFree ? '0' : item.gst}%</td>
+                    <td class="p-3 text-right font-medium text-emerald-700">${isFree ? '<span class="text-xs bg-emerald-200 text-emerald-800 px-1 py-0.5 rounded">FREE</span>' : window.formatCurrency(displayTotal, curr)}</td>
+                    <td class="p-3 text-center ${window.isFeatureEnabled('schemes') ? '' : 'hidden'}"><input type="checkbox" ${item.isFreebie ? 'checked' : ''} onchange="window.updateDraftItem('${item.id}', 'isFreebie', this.checked)" title="Mark as Freebie" class="w-4 h-4 text-emerald-600 cursor-pointer"></td>
+                    <td class="p-3 text-center"><button onclick="window.removeDraftItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                    </tr>`
+                }).join('');
             }
             
-            const theadHtml = `<tr><th class="p-3">Item Name</th>${window.isFeatureEnabled('hsn') ? '<th class="p-3 w-16">HSN</th>' : ''}<th class="p-3 w-16">Qty</th><th class="p-3 w-24">Rate</th><th class="p-3 w-16">GST</th><th class="p-3 w-24 text-right">Total</th><th class="p-3 w-10"></th></tr>`;
+            const thFreebie = window.isFeatureEnabled('schemes') ? '<th class="p-3 w-10 text-center" title="Freebie">F</th>' : '';
+            const theadHtml = `<tr><th class="p-3">Item Name</th>${window.isFeatureEnabled('hsn') ? '<th class="p-3 w-16">HSN</th>' : ''}<th class="p-3 w-16">Qty</th><th class="p-3 w-24">Rate</th><th class="p-3 w-16">GST</th><th class="p-3 w-24 text-right">Total</th>${thFreebie}<th class="p-3 w-10"></th></tr>`;
             setHTML('invoice-items-wrapper', `<table class="w-full text-left text-sm min-w-[650px]"><thead class="bg-slate-100 text-slate-600 font-medium">${theadHtml}</thead><tbody id="invoice-items-body">${tbodyHtml}</tbody></table>`);
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -1505,17 +1774,23 @@
                 name: name, 
                 mobile: document.getElementById('inv-client-mobile') ? document.getElementById('inv-client-mobile').value : '', 
                 gstin: document.getElementById('inv-client-gstin') ? document.getElementById('inv-client-gstin').value : '', 
-                address: document.getElementById('inv-client-address') ? document.getElementById('inv-client-address').value : '' 
+                address: document.getElementById('inv-client-address') ? document.getElementById('inv-client-address').value : '',
+                priceTier: window.AppState.draft.client.priceTier || 'standard'
             };
             const invoiceDoc = { ...window.AppState.draft, client: clientData, status: status, subtotal: totals.subtotal, totalTax: totals.totalTax, grandTotal: totals.grandTotal, tdsAmount: totals.tdsCalculated, date: invDate, createdAt: Date.now() };
 
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'invoices', invoiceDoc.id), invoiceDoc);
                 const existingClient = window.AppState.clients.find(c => c.name.toLowerCase() === name.toLowerCase());
-                if(existingClient) { await updateDoc(doc(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'clients', existingClient.id), clientData); } 
-                else { await addDoc(collection(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'clients'), { ...clientData, journal: [], createdAt: serverTimestamp() }); }
+                if(existingClient) { 
+                    // Preserve credit limits when updating
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'clients', existingClient.id), clientData); 
+                } 
+                else { 
+                    await addDoc(collection(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'clients'), { ...clientData, journal: [], creditLimit: 0, createdAt: serverTimestamp() }); 
+                }
 
-                if(status === 'final' && window.AppState.draft.docType !== 'Quotation' && window.AppState.draft.docType !== 'Proforma Invoice') {
+                if(status === 'final' && window.AppState.draft.docType !== 'Quotation' && window.AppState.draft.docType !== 'Proforma Invoice' && window.AppState.draft.docType !== 'Purchase Order') {
                     for (const item of window.AppState.draft.items) {
                         const prod = window.AppState.products.find(p => p.id === item.productId);
                         if (prod && typeof prod.stock === 'number') { await updateDoc(doc(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'products', prod.id), { stock: Math.max(0, prod.stock - item.qty) }); }
@@ -1523,7 +1798,7 @@
                 }
                 window.showToast(`${window.AppState.draft.docType} ${status === 'final' ? 'Finalized' : 'Draft Saved'} successfully!`);
                 if(status === 'final') {
-                    window.AppState.draft = { id: window.getNextInvoiceId(), docType: 'Tax Invoice', currency: 'INR', items: [], discount: 0, discountType: 'fixed', tds: 0, isRcm: false, poNo: '', vehicleNo: '', ewayBill: '', paymentMode: 'upi', paymentStatus: 'unpaid', notes: '', dueDate: '', client: { name: '', mobile: '', gstin: '', address: '' } };
+                    window.AppState.draft = { id: window.getNextInvoiceId(), docType: 'Tax Invoice', currency: 'INR', items: [], discount: 0, discountType: 'fixed', tds: 0, isRcm: false, poNo: '', vehicleNo: '', ewayBill: '', paymentMode: 'upi', paymentStatus: 'unpaid', notes: '', dueDate: '', salesman: '', dispatchStatus: 'Pending', deliveryBoy: '', client: { name: '', mobile: '', gstin: '', address: '', priceTier: 'standard' } };
                     localStorage.removeItem('ayur_draft_pro'); window.restoreDraftToUI(); window.updateInvoiceUI();
                 }
             } catch (err) { window.showToast("Error saving document.", "error"); }
@@ -1533,7 +1808,7 @@
             const frm = document.getElementById('add-product-form'); if(frm) frm.classList.toggle('hidden', !show); 
             if(!show) { 
                 window.AppState.editingProductId = null; setText('add-product-form-title', "Add New Item"); 
-                ['name','hsn','cost','rate','stock','batch','expiry'].forEach(id => { setVal(`new-prod-${id}`, (id==='stock'?'0':'')); }); 
+                ['name','hsn','cost','rate','stock','batch','expiry','barcode','godown','rate-retail','rate-dist'].forEach(id => { setVal(`new-prod-${id}`, (id==='stock'?'0':'')); }); 
             } 
         }
         window.editProduct = function(id) { 
@@ -1542,20 +1817,26 @@
             setVal('new-prod-name', p.name); setVal('new-prod-category', p.category || 'Medicine'); setVal('new-prod-hsn', p.hsn || ''); 
             setVal('new-prod-cost', p.cost || ''); setVal('new-prod-rate', p.rate); setVal('new-prod-gst', p.gst); 
             setVal('new-prod-stock', p.stock || 0); setVal('new-prod-batch', p.batch || ''); setVal('new-prod-expiry', p.expiry || ''); 
+            setVal('new-prod-barcode', p.barcode || ''); setVal('new-prod-godown', p.godown || '');
+            setVal('new-prod-rate-retail', p.rateRetail || ''); setVal('new-prod-rate-dist', p.rateDist || '');
             setText('add-product-form-title', "Edit Item"); window.toggleProductModal(true); window.scrollTo(0,0); 
         }
         window.saveProduct = async function() {
             const nameEl = document.getElementById('new-prod-name'); const rateEl = document.getElementById('new-prod-rate');
             if(!nameEl || !rateEl) return;
             const name = nameEl.value.trim(); const rate = rateEl.value;
-            if(!name || !rate) return window.showToast("Name and Rate required.", "error");
+            if(!name || !rate) return window.showToast("Name and Standard Rate required.", "error");
             
             const payload = { 
                 name, 
                 category: document.getElementById('new-prod-category') ? document.getElementById('new-prod-category').value : 'Medicine', 
                 hsn: document.getElementById('new-prod-hsn') ? document.getElementById('new-prod-hsn').value : '', 
+                barcode: document.getElementById('new-prod-barcode') ? document.getElementById('new-prod-barcode').value : '',
+                godown: document.getElementById('new-prod-godown') ? document.getElementById('new-prod-godown').value : '',
                 cost: document.getElementById('new-prod-cost') ? Number(document.getElementById('new-prod-cost').value) : 0, 
                 rate: Number(rate), 
+                rateRetail: document.getElementById('new-prod-rate-retail') ? Number(document.getElementById('new-prod-rate-retail').value) : null,
+                rateDist: document.getElementById('new-prod-rate-dist') ? Number(document.getElementById('new-prod-rate-dist').value) : null,
                 gst: document.getElementById('new-prod-gst') ? Number(document.getElementById('new-prod-gst').value) : 0, 
                 stock: document.getElementById('new-prod-stock') ? Number(document.getElementById('new-prod-stock').value) : 0, 
                 batch: document.getElementById('new-prod-batch') ? document.getElementById('new-prod-batch').value : '', 
@@ -1572,19 +1853,59 @@
         window.renderInventory = function() {
             const searchEl = document.getElementById('inventory-search');
             const query = (searchEl ? searchEl.value : '').toLowerCase(); 
-            const filtered = window.AppState.products.filter(p => p.name.toLowerCase().includes(query));
+            const filtered = window.AppState.products.filter(p => !p.isHidden && (p.name.toLowerCase().includes(query) || (p.barcode && p.barcode.includes(query))));
+            
             setHTML('inventory-list', filtered.map(p => {
                 const margin = (p.cost && p.rate && window.isFeatureEnabled('margin')) ? (((p.rate - p.cost) / p.cost) * 100).toFixed(0) : null;
                 const batchExpStr = window.isFeatureEnabled('batch') && (p.batch || p.expiry) ? `Batch: ${p.batch||'N/A'} • Exp: ${p.expiry||'N/A'}` : '';
                 const hsnStr = window.isFeatureEnabled('hsn') && p.hsn ? `HSN: ${p.hsn} ` : '';
-                return `<div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between ${p.isHidden ? 'opacity-60 bg-slate-50' : ''}"><div><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-slate-800 truncate pr-2">${p.name}</h4><span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded">GST ${p.gst}%</span></div><div class="text-2xl font-bold text-slate-700 mb-2">₹${p.rate} <span class="text-xs font-normal text-slate-400">/ ${p.category||'Medicine'}</span></div>${margin ? `<div class="text-xs font-bold text-emerald-600 mb-1">Margin: ${margin}%</div>` : ''}${(batchExpStr || hsnStr) ? `<div class="text-[10px] text-slate-500 mt-1 border-t border-slate-100 pt-2">${hsnStr ? hsnStr + '• ' : ''}${batchExpStr}</div>` : ''}</div><div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center"><span class="text-xs ${p.stock <= 10 ? 'text-red-600 font-bold' : 'text-slate-500'}">Stock: ${p.stock || 0}</span><div><button onclick="window.editProduct('${p.id}')" class="text-xs text-blue-500 hover:text-blue-700 border border-slate-200 px-3 py-1 rounded hover:bg-blue-50 transition-colors mr-1">Edit</button><button onclick="window.toggleHideProduct('${p.id}', ${p.isHidden})" class="text-xs text-slate-500 hover:text-emerald-600 border border-slate-200 px-3 py-1 rounded hover:bg-emerald-50 transition-colors">${p.isHidden ? 'Unhide' : 'Archive'}</button></div></div></div>`;
+                const gdStr = window.isFeatureEnabled('multiGodown') && p.godown ? `<div class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded ml-2 inline-block"><i data-lucide="map-pin" class="w-3 h-3 inline"></i> ${p.godown}</div>` : '';
+                
+                return `<div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between ${p.isHidden ? 'opacity-60 bg-slate-50' : ''}"><div><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-slate-800 truncate pr-2">${p.name} ${gdStr}</h4><span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded">GST ${p.gst}%</span></div><div class="text-2xl font-bold text-slate-700 mb-2">₹${p.rate} <span class="text-xs font-normal text-slate-400">/ ${p.category||'Medicine'}</span></div>${margin ? `<div class="text-xs font-bold text-emerald-600 mb-1">Margin: ${margin}%</div>` : ''}${(batchExpStr || hsnStr) ? `<div class="text-[10px] text-slate-500 mt-1 border-t border-slate-100 pt-2">${hsnStr ? hsnStr + '• ' : ''}${batchExpStr}</div>` : ''}</div><div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center"><span class="text-xs ${p.stock <= 10 ? 'text-red-600 font-bold' : 'text-slate-500'}">Stock: ${p.stock || 0}</span><div><button onclick="window.editProduct('${p.id}')" class="text-xs text-blue-500 hover:text-blue-700 border border-slate-200 px-3 py-1 rounded hover:bg-blue-50 transition-colors mr-1">Edit</button><button onclick="window.toggleHideProduct('${p.id}', ${p.isHidden})" class="text-xs text-slate-500 hover:text-emerald-600 border border-slate-200 px-3 py-1 rounded hover:bg-emerald-50 transition-colors">${p.isHidden ? 'Unhide' : 'Archive'}</button></div></div></div>`;
             }).join('') || '<div class="col-span-full p-8 text-center text-slate-400">No products found.</div>');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // F14: Stock Valuation Report (FIFO Approximation via Current Cost)
+        window.stockValuationReport = function() {
+            let totalVal = 0; let itemsStr = "Product,Godown,Stock,Cost Price,Total Value\n";
+            window.AppState.products.filter(p => !p.isHidden && p.stock > 0).forEach(p => {
+                const c = Number(p.cost) || 0; const s = Number(p.stock) || 0;
+                totalVal += (c * s);
+                itemsStr += `"${p.name}","${p.godown||'Main'}","${s}","${c}","${c*s}"\n`;
+            });
+            itemsStr += `\n,,,"GRAND TOTAL VALUATION:",${totalVal}`;
+            
+            const link = document.createElement("a"); 
+            link.href = URL.createObjectURL(new Blob([itemsStr], { type: 'text/csv;charset=utf-8;' })); 
+            link.download = `Stock_Valuation_${Date.now()}.csv`; 
+            link.click();
+            window.showToast(`Total Godown Valuation: ${formatINR(totalVal)}`, "success");
+        }
+
+        // F4: Auto-Generate Purchase Order
+        window.generateAutoPO = function() {
+            const lowStockItems = window.AppState.products.filter(p => !p.isHidden && typeof p.stock === 'number' && p.stock <= 10);
+            if(lowStockItems.length === 0) return window.showToast("Stock is healthy. No items <= 10.", "success");
+            
+            window.AppState.draft = { 
+                id: window.getNextInvoiceId(), docType: 'Purchase Order', currency: 'INR', discount: 0, discountType: 'fixed', tds: 0, 
+                isRcm: false, poNo: `AUTO-${Date.now().toString().slice(-4)}`, vehicleNo: '', ewayBill: '', paymentMode: 'upi', paymentStatus: 'unpaid', 
+                notes: 'Auto-generated PO based on low stock alerts.', dueDate: '', salesman: '', dispatchStatus: 'Pending', deliveryBoy: '',
+                client: { name: 'VENDOR NAME (EDIT ME)', mobile: '', gstin: '', address: '', priceTier: 'standard' },
+                items: lowStockItems.map(p => ({
+                    id: Date.now().toString() + Math.random(), productId: p.id, name: p.name, rate: Number(p.cost || p.rate), qty: 50, // default auto reorder 50
+                    gst: Number(p.gst), hsn: p.hsn || '', batch: '', expiry: '', isFreebie: false
+                }))
+            };
+            window.switchTab('invoice');
+            window.showToast(`Generated Auto-PO Draft with ${lowStockItems.length} items!`);
         }
 
         window.exportInventoryCSV = function() {
             const products = window.AppState.products; if(products.length === 0) return window.showToast("No products to export", "warning");
-            const headers = "Name,Category,HSN,Cost,Rate,GST,Stock,Batch,Expiry\n";
-            const rows = products.map(p => `"${p.name}","${p.category||''}","${p.hsn||''}",${p.cost||0},${p.rate},${p.gst||0},${p.stock||0},"${p.batch||''}","${p.expiry||''}"`).join("\n");
+            const headers = "Name,Category,HSN,Barcode,Warehouse,Cost,Rate,GST,Stock,Batch,Expiry\n";
+            const rows = products.map(p => `"${p.name}","${p.category||''}","${p.hsn||''}","${p.barcode||''}","${p.godown||''}","${p.cost||0}","${p.rate}","${p.gst||0}","${p.stock||0}","${p.batch||''}","${p.expiry||''}"`).join("\n");
             const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })); link.download = `Inventory.csv`; link.click();
         }
 
@@ -1602,6 +1923,24 @@
 
         window.togglePaymentStatus = async function(id, current) { await updateDoc(doc(db, 'artifacts', appId, 'users', window.AppState.user.uid, 'invoices', id), { paymentStatus: current === 'paid' ? 'unpaid' : 'paid' }); }
         
+        // F12: E-Invoice JSON Export
+        window.exportEInvoiceJSON = function(id) {
+            const inv = window.AppState.invoices.find(i => i.id === id); if(!inv) return;
+            const eInvoicePayload = {
+                Version: "1.1",
+                TranDtls: { TaxSch: "GST", SupTyp: "B2B", RegRev: inv.isRcm ? "Y" : "N" },
+                DocDtls: { Typ: "INV", No: inv.id, Dt: inv.date.split('-').reverse().join('/') },
+                SellerDtls: { LglNm: window.AppState.settings.businessName, GSTIN: window.AppState.settings.gstin, Addr1: window.AppState.settings.address, Loc: "India", Pin: 100000, Stcd: "07" },
+                BuyerDtls: { LglNm: inv.client.name, GSTIN: inv.client.gstin || "URP", Addr1: inv.client.address || "Client Addr", Loc: "India", Pin: 100000, Stcd: "07" },
+                ItemList: inv.items.map((it, idx) => ({ SlNo: (idx+1).toString(), PrdDesc: it.name, IsServc: "N", HsnCd: it.hsn||"1234", Qty: it.qty, Unit: "NOS", UnitPrice: it.rate, TotAmt: (it.qty*it.rate), AssAmt: (it.qty*it.rate), GstRt: it.gst, IgstAmt: 0, CgstAmt: ((it.qty*it.rate)*(it.gst/200)), SgstAmt: ((it.qty*it.rate)*(it.gst/200)), TotItemVal: ((it.qty*it.rate)*(1+(it.gst/100))) })),
+                ValDtls: { AssVal: inv.subtotal, CgstVal: (inv.totalTax/2), SgstVal: (inv.totalTax/2), IgstVal: 0, Discount: inv.discount, TotInvVal: inv.grandTotal }
+            };
+            const link = document.createElement("a"); 
+            link.href = URL.createObjectURL(new Blob([JSON.stringify(eInvoicePayload, null, 2)], { type: 'application/json' })); 
+            link.download = `EInvoice_${inv.id}.json`; link.click();
+            window.showToast("E-Invoice JSON Generated");
+        }
+
         window.renderRecords = function() {
             const searchEl = document.getElementById('filter-search'); const query = searchEl ? searchEl.value.toLowerCase() : ''; 
             const startEl = document.getElementById('filter-start'); const start = startEl ? startEl.value : ''; 
@@ -1613,7 +1952,13 @@
             const collectedTax = filtered.filter(i => i.status === 'final' && i.docType === 'Tax Invoice' && i.status !== 'void').reduce((sum, i) => sum + (Number(i.totalTax) || 0), 0);
             setText('records-tax-summary', formatINR(collectedTax));
 
-            setHTML('records-list', filtered.map(inv => `<tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white ${inv.status==='void'?'opacity-50':''}"><td class="p-4 font-mono text-emerald-700 text-sm ${inv.status==='void'?'line-through':''}">${inv.id}</td><td class="p-4 text-xs font-bold text-slate-500 uppercase">${inv.docType || 'Tax Invoice'}</td><td class="p-4 text-slate-600 text-sm whitespace-nowrap">${inv.date}</td><td class="p-4 font-medium text-slate-800 text-sm truncate max-w-[150px]">${inv.client.name}</td><td class="p-4 text-right font-bold ${inv.docType === 'Credit Note' ? 'text-red-600' : 'text-slate-800'} ${inv.status==='void'?'line-through text-slate-400':''}">${window.formatCurrency(inv.grandTotal, inv.currency)}</td><td class="p-4 text-center">${inv.status === 'draft' || inv.docType === 'Credit Note' || inv.status === 'void' ? `<span class="text-[10px] text-slate-400 font-bold uppercase">${inv.status==='void'?'VOID':'N/A'}</span>` : `<button onclick="window.togglePaymentStatus('${inv.id}', '${inv.paymentStatus || 'unpaid'}')" class="text-[10px] uppercase font-bold px-3 py-1.5 rounded-full transition-colors ${inv.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}">${inv.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}</button>`}</td><td class="p-4 text-center">${inv.status === 'draft' ? `<button onclick="window.resumeDraft('${inv.id}')" class="px-2 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 rounded text-xs font-bold transition-colors">Resume</button>` : `<div class="flex items-center gap-1 justify-center"><button onclick="window.viewInvoice('${inv.id}')" class="px-2 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded text-xs font-bold transition-colors">View</button><button onclick="window.duplicateInvoice('${inv.id}')" title="Duplicate" class="p-1.5 text-slate-400 hover:text-blue-500"><i data-lucide="copy" class="w-4 h-4"></i></button><button onclick="window.shareWhatsApp('${inv.id}')" title="WhatsApp" class="p-1.5 text-slate-400 hover:text-green-500"><i data-lucide="message-circle" class="w-4 h-4"></i></button><button onclick="window.voidInvoice('${inv.id}')" title="Void" class="p-1.5 text-slate-400 hover:text-red-500"><i data-lucide="ban" class="w-4 h-4"></i></button>${window.isFeatureEnabled('creditNote') ? `<button onclick="window.issueCreditNote('${inv.id}')" title="Credit Note" class="p-1.5 text-slate-400 hover:text-purple-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"></path></svg></button>`:''}</div>`}</td></tr>`).join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-400">No records found matching filters.</td></tr>');
+            setHTML('records-list', filtered.map(inv => {
+                const isFinal = inv.status === 'final';
+                const dispatchBadge = (window.isFeatureEnabled('dispatchFlow') && isFinal && inv.docType !== 'Quotation' && inv.docType !== 'Proforma Invoice' && inv.docType !== 'Purchase Order') 
+                    ? `<br><span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase mt-1 inline-block"><i data-lucide="truck" class="w-3 h-3 inline"></i> ${inv.dispatchStatus || 'Pending'}</span>` : '';
+
+                return `<tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white ${inv.status==='void'?'opacity-50':''}"><td class="p-4 font-mono text-emerald-700 text-sm ${inv.status==='void'?'line-through':''}">${inv.id} ${dispatchBadge}</td><td class="p-4 text-xs font-bold text-slate-500 uppercase">${inv.docType || 'Tax Invoice'}</td><td class="p-4 text-slate-600 text-sm whitespace-nowrap">${inv.date}</td><td class="p-4 font-medium text-slate-800 text-sm truncate max-w-[150px]">${inv.client.name}</td><td class="p-4 text-right font-bold ${inv.docType === 'Credit Note' ? 'text-red-600' : 'text-slate-800'} ${inv.status==='void'?'line-through text-slate-400':''}">${window.formatCurrency(inv.grandTotal, inv.currency)}</td><td class="p-4 text-center">${inv.status === 'draft' || inv.docType === 'Credit Note' || inv.status === 'void' ? `<span class="text-[10px] text-slate-400 font-bold uppercase">${inv.status==='void'?'VOID':'N/A'}</span>` : `<button onclick="window.togglePaymentStatus('${inv.id}', '${inv.paymentStatus || 'unpaid'}')" class="text-[10px] uppercase font-bold px-3 py-1.5 rounded-full transition-colors ${inv.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}">${inv.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}</button>`}</td><td class="p-4 text-center">${inv.status === 'draft' ? `<button onclick="window.resumeDraft('${inv.id}')" class="px-2 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 rounded text-xs font-bold transition-colors">Resume</button>` : `<div class="flex items-center gap-1 justify-center"><button onclick="window.viewInvoice('${inv.id}')" class="px-2 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded text-xs font-bold transition-colors">View</button><button onclick="window.duplicateInvoice('${inv.id}')" title="Duplicate" class="p-1.5 text-slate-400 hover:text-blue-500"><i data-lucide="copy" class="w-4 h-4"></i></button><button onclick="window.shareWhatsApp('${inv.id}')" title="WhatsApp" class="p-1.5 text-slate-400 hover:text-green-500"><i data-lucide="message-circle" class="w-4 h-4"></i></button><button onclick="window.voidInvoice('${inv.id}')" title="Void" class="p-1.5 text-slate-400 hover:text-red-500"><i data-lucide="ban" class="w-4 h-4"></i></button>${window.isFeatureEnabled('eInvoice') && inv.docType==='Tax Invoice' ? `<button onclick="window.exportEInvoiceJSON('${inv.id}')" title="E-Invoice JSON" class="p-1.5 text-slate-400 hover:text-emerald-600"><i data-lucide="code" class="w-4 h-4"></i></button>` : ''}${window.isFeatureEnabled('creditNote') ? `<button onclick="window.issueCreditNote('${inv.id}')" title="Credit Note" class="p-1.5 text-slate-400 hover:text-purple-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"></path></svg></button>`:''}</div>`}</td></tr>`;
+            }).join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-400">No records found matching filters.</td></tr>');
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -1677,15 +2022,15 @@
 
         window.exportCSV = function() {
             const invoices = window.AppState.invoices; if(invoices.length === 0) return window.showToast("No data to export", "error");
-            const headers = "Invoice ID,Doc Type,Date,Client Name,Phone,Subtotal,Tax,Discount,TDS,Grand Total,Status,Payment Status\n";
-            const rows = invoices.map(i => `${i.id},${i.docType||'Tax Invoice'},${i.date},"${i.client.name || ''}",${i.client.mobile || ''},${i.subtotal},${i.totalTax},${i.discount},${i.tdsAmount||0},${i.grandTotal},${i.status},${i.paymentStatus||'unpaid'}`).join("\n");
+            const headers = "Invoice ID,Doc Type,Date,Client Name,Phone,Subtotal,Tax,Discount,TDS,Grand Total,Status,Payment Status,Dispatch Status,Delivery Boy\n";
+            const rows = invoices.map(i => `${i.id},${i.docType||'Tax Invoice'},${i.date},"${i.client.name || ''}",${i.client.mobile || ''},${i.subtotal},${i.totalTax},${i.discount},${i.tdsAmount||0},${i.grandTotal},${i.status},${i.paymentStatus||'unpaid'},${i.dispatchStatus||'Pending'},"${i.deliveryBoy||''}"`).join("\n");
             const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })); link.download = `DevAyurveda_Sales.csv`; link.click();
         }
 
         window.exportClientsCSV = function() {
             const clients = window.AppState.clients; if(clients.length === 0) return window.showToast("No clients to export", "warning");
-            const headers = "Name,Mobile,GSTIN,Address,General Notes\n";
-            const rows = clients.map(c => `"${c.name||''}","${c.mobile||''}","${c.gstin||''}","${c.address||''}","${c.notes||''}"`).join("\n");
+            const headers = "Name,Mobile,GSTIN,Address,Price Tier,Credit Limit,General Notes\n";
+            const rows = clients.map(c => `"${c.name||''}","${c.mobile||''}","${c.gstin||''}","${c.address||''}","${c.priceTier||'standard'}","${c.creditLimit||0}","${c.notes||''}"`).join("\n");
             const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })); link.download = `Clients.csv`; link.click();
         }
 
@@ -1697,6 +2042,7 @@
                 window.AppState.editingClientId = null;
                 setText('edit-client-title', 'Create New Client');
                 setVal('edit-client-name', ''); setVal('edit-client-mobile', ''); setVal('edit-client-gstin', ''); setVal('edit-client-address', ''); setVal('edit-client-notes', '');
+                setVal('edit-client-tier', 'standard'); setVal('edit-client-limit', '');
                 document.getElementById('client-journal-section').style.display = 'none';
             } else if (show) {
                 setText('edit-client-title', 'Edit Patient Profile');
@@ -1709,6 +2055,7 @@
         window.editClient = function(id) { 
             const c = window.AppState.clients.find(x => x.id === id); if(!c) return; window.AppState.editingClientId = id; 
             setVal('edit-client-name', c.name || ''); setVal('edit-client-mobile', c.mobile || ''); setVal('edit-client-gstin', c.gstin || ''); setVal('edit-client-address', c.address || ''); setVal('edit-client-notes', c.notes || ''); 
+            setVal('edit-client-tier', c.priceTier || 'standard'); setVal('edit-client-limit', c.creditLimit || '');
             window.toggleClientModal(true, false); 
             window.renderClientJournal(c.journal || []);
             window.scrollTo(0,0); 
@@ -1740,7 +2087,14 @@
         window.saveClientEdit = async function() {
             const nameEl = document.getElementById('edit-client-name'); const name = nameEl ? nameEl.value.trim() : ''; 
             if(!name) return window.showToast("Name is required", "error");
-            const clientData = { name, mobile: document.getElementById('edit-client-mobile') ? document.getElementById('edit-client-mobile').value : '', gstin: document.getElementById('edit-client-gstin') ? document.getElementById('edit-client-gstin').value : '', address: document.getElementById('edit-client-address') ? document.getElementById('edit-client-address').value : '', notes: document.getElementById('edit-client-notes') ? document.getElementById('edit-client-notes').value : '' };
+            const clientData = { 
+                name, mobile: document.getElementById('edit-client-mobile') ? document.getElementById('edit-client-mobile').value : '', 
+                gstin: document.getElementById('edit-client-gstin') ? document.getElementById('edit-client-gstin').value : '', 
+                address: document.getElementById('edit-client-address') ? document.getElementById('edit-client-address').value : '', 
+                notes: document.getElementById('edit-client-notes') ? document.getElementById('edit-client-notes').value : '',
+                priceTier: document.getElementById('edit-client-tier') ? document.getElementById('edit-client-tier').value : 'standard',
+                creditLimit: document.getElementById('edit-client-limit') ? Number(document.getElementById('edit-client-limit').value) : 0
+            };
             
             try { 
                 if (window.AppState.editingClientId) {
@@ -1754,13 +2108,41 @@
             } catch(e) { window.showToast("Failed to save client.", "error"); }
         }
 
+        // F8: B2B Portal Mock
+        window.copyB2BLink = function() {
+            const mockUrl = `https://b2b.devayurveda.com/portal/${window.AppState.user.uid.substring(0,6)}`;
+            const waText = encodeURIComponent(`Welcome to our Wholesale Portal! View our live stock and place orders here: ${mockUrl}`);
+            window.open(`https://wa.me/?text=${waText}`, '_blank');
+        }
+
         window.renderClients = function() {
             const searchEl = document.getElementById('clients-search'); const query = (searchEl ? searchEl.value : '').toLowerCase(); const invoices = window.AppState.invoices || [];
             const filteredClients = window.AppState.clients.filter(c => c.name.toLowerCase().includes(query) || (c.mobile && c.mobile.includes(query)));
             setHTML('clients-list', filteredClients.map(c => {
                 const cInvoices = invoices.filter(i => i.client.name === c.name && i.status === 'final' && i.status !== 'void'); const clv = cInvoices.reduce((sum, i) => sum + Number(i.grandTotal), 0);
-                return `<div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between"><div class="flex items-center gap-4 mb-4"><div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg uppercase shrink-0">${c.name.charAt(0)}</div><div class="flex-1 min-w-0"><h4 class="font-bold text-slate-800 truncate">${c.name}</h4><div class="text-xs text-slate-500 mt-1 truncate">📞 ${c.mobile || 'No Mobile'}</div></div><div class="text-right shrink-0"><div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Lifetime</div><div class="font-bold text-emerald-600 text-sm">${formatINR(clv)}</div><div class="text-[10px] text-slate-400 mt-0.5">${cInvoices.length} orders</div></div></div>${c.notes ? `<div class="text-xs text-slate-600 bg-slate-50 p-2 rounded mb-3 border border-slate-100 line-clamp-2 italic"><strong>Notes:</strong> ${c.notes}</div>` : ''}<div class="flex gap-2"><button onclick="window.editClient('${c.id}')" class="flex-1 text-[10px] px-3 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 font-bold uppercase tracking-wider">Edit Profile</button>${window.isFeatureEnabled('ledger') ? `<button onclick="window.generateClientLedger('${c.name}')" class="flex-1 text-[10px] px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-bold uppercase tracking-wider">Ledger PDF</button>`:''}</div></div>`
+                const isOverdue = window.isFeatureEnabled('creditLimits') && c.creditLimit > 0 && cInvoices.filter(i=>i.paymentStatus!=='paid').reduce((s,i)=>s+Number(i.grandTotal),0) > c.creditLimit;
+                
+                return `<div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between ${isOverdue ? 'ring-2 ring-red-400 bg-red-50/20' : ''}"><div class="flex items-center gap-4 mb-4"><div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg uppercase shrink-0">${c.name.charAt(0)}</div><div class="flex-1 min-w-0"><h4 class="font-bold text-slate-800 truncate">${c.name}</h4><div class="text-[10px] text-slate-500 mt-1 truncate">📞 ${c.mobile || 'No Mobile'} ${c.priceTier && c.priceTier !== 'standard' ? `<span class="bg-indigo-100 text-indigo-700 px-1 py-0.5 ml-1 rounded uppercase font-bold">${c.priceTier}</span>` : ''}</div></div><div class="text-right shrink-0"><div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Lifetime</div><div class="font-bold text-emerald-600 text-sm">${formatINR(clv)}</div><div class="text-[10px] text-slate-400 mt-0.5">${cInvoices.length} orders</div></div></div>${c.notes ? `<div class="text-xs text-slate-600 bg-slate-50 p-2 rounded mb-3 border border-slate-100 line-clamp-2 italic"><strong>Notes:</strong> ${c.notes}</div>` : ''}${c.creditLimit > 0 ? `<div class="text-[10px] mb-3 font-bold ${isOverdue ? 'text-red-600' : 'text-slate-400'}">Credit Limit: ${formatINR(c.creditLimit)}</div>` : ''}<div class="flex gap-2"><button onclick="window.editClient('${c.id}')" class="flex-1 text-[10px] px-3 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 font-bold uppercase tracking-wider">Edit Profile</button>${window.isFeatureEnabled('ledger') ? `<button onclick="window.generateClientLedger('${c.name}')" class="flex-1 text-[10px] px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-bold uppercase tracking-wider">Ledger PDF</button>`:''}</div></div>`
             }).join('') || '<div class="col-span-full p-8 text-center text-slate-400">No clients found.</div>');
+        }
+
+        // F11: Bulk Payment Receive from Ledger
+        window.processBulkPayment = async function() {
+            const checks = document.querySelectorAll('.ledger-bulk-check:checked');
+            if(checks.length === 0) return window.showToast("Select at least one unpaid invoice.", "warning");
+            
+            try {
+                const batch = writeBatch(db);
+                const uid = window.AppState.user.uid;
+                checks.forEach(chk => {
+                    const invId = chk.value;
+                    const ref = doc(db, 'artifacts', appId, 'users', uid, 'invoices', invId);
+                    batch.update(ref, { paymentStatus: 'paid' });
+                });
+                await batch.commit();
+                window.showToast(`Successfully marked ${checks.length} invoices as Paid!`);
+                window.closeLedgerModal();
+            } catch(e) { window.showToast("Error processing bulk payment.", "error"); }
         }
 
         window.generateClientLedger = function(clientName) {
@@ -1771,7 +2153,11 @@
             const rows = clientInvs.map(inv => {
                 const amount = Number(inv.grandTotal); const isPaid = inv.paymentStatus === 'paid';
                 if(!isPaid) runningBal += amount;
-                return `<tr class="border-b border-slate-200"><td class="py-2">${inv.date}</td><td class="py-2">${inv.id}</td><td class="py-2 text-right">₹${amount.toFixed(2)}</td><td class="py-2 text-center text-xs ${isPaid ? 'text-green-600 font-bold' : 'text-red-500'}">${isPaid ? 'Paid' : 'Unpaid'}</td><td class="py-2 text-right font-bold">₹${runningBal.toFixed(2)}</td></tr>`;
+                
+                // Add Checkbox for F11
+                const bulkCheckbox = !isPaid && window.isFeatureEnabled('bulkPayment') ? `<input type="checkbox" class="ledger-bulk-check w-4 h-4 cursor-pointer align-middle" value="${inv.id}"> ` : '';
+                
+                return `<tr class="border-b border-slate-200"><td class="py-2">${bulkCheckbox} ${inv.date}</td><td class="py-2">${inv.id}</td><td class="py-2 text-right">₹${amount.toFixed(2)}</td><td class="py-2 text-center text-xs ${isPaid ? 'text-green-600 font-bold' : 'text-red-500'}">${isPaid ? 'Paid' : 'Unpaid'}</td><td class="py-2 text-right font-bold">₹${runningBal.toFixed(2)}</td></tr>`;
             }).join('');
 
             const html = `
@@ -1784,7 +2170,15 @@
             setHTML('ledger-render-area', html); const lMod = document.getElementById('ledger-modal'); if(lMod) lMod.style.display = 'flex';
         }
         window.closeLedgerModal = function() { const lMod = document.getElementById('ledger-modal'); if(lMod) lMod.style.display = 'none'; }
-        window.downloadLedgerPDF = function() { window.showToast("Downloading Ledger..."); html2pdf().set({ margin: 10, filename: `Ledger_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(document.getElementById('ledger-render-area')).save(); }
+        window.downloadLedgerPDF = function() { 
+            // Hide checkboxes before print
+            document.querySelectorAll('.ledger-bulk-check').forEach(el => el.style.display = 'none');
+            window.showToast("Downloading Ledger..."); 
+            html2pdf().set({ margin: 10, filename: `Ledger_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(document.getElementById('ledger-render-area')).save().then(()=> {
+                // restore checkboxes
+                document.querySelectorAll('.ledger-bulk-check').forEach(el => el.style.display = 'inline-block');
+            }); 
+        }
 
         window.populateSettingsUI = function() {
             const s = window.AppState.settings;
@@ -1801,7 +2195,7 @@
             window.setTemplate(s.template || 'modern');
 
             const f = s.features || defaultFeatures;
-            const toggles = ['expenses', 'multiDoc', 'currency', 'shipping', 'tds', 'rcm', 'hsn', 'dueDate', 'ledger', 'creditNote', 'margin', 'batch'];
+            const toggles = ['expenses', 'multiDoc', 'currency', 'shipping', 'tds', 'rcm', 'hsn', 'dueDate', 'ledger', 'creditNote', 'margin', 'batch', 'barcode', 'multiGodown', 'nearExpiry', 'autoPO', 'tieredPricing', 'creditLimits', 'salesman', 'b2bPortal', 'dispatchFlow', 'deliveryTracking', 'bulkPayment', 'eInvoice', 'supplierBill', 'fifoValuation', 'schemes'];
             toggles.forEach(t => { const el = document.getElementById(`feat-${t}`); if(el) el.checked = f[t] !== false; });
         }
 
@@ -1828,7 +2222,7 @@
                 s.bankAcc = document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : ''; 
                 s.bankIfsc = document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '';
                 
-                s.features = {}; const toggles = ['expenses', 'multiDoc', 'currency', 'shipping', 'tds', 'rcm', 'hsn', 'dueDate', 'ledger', 'creditNote', 'margin', 'batch'];
+                s.features = {}; const toggles = ['expenses', 'multiDoc', 'currency', 'shipping', 'tds', 'rcm', 'hsn', 'dueDate', 'ledger', 'creditNote', 'margin', 'batch', 'barcode', 'multiGodown', 'nearExpiry', 'autoPO', 'tieredPricing', 'creditLimits', 'salesman', 'b2bPortal', 'dispatchFlow', 'deliveryTracking', 'bulkPayment', 'eInvoice', 'supplierBill', 'fifoValuation', 'schemes'];
                 toggles.forEach(t => { const el = document.getElementById(`feat-${t}`); if(el) s.features[t] = el.checked; });
 
                 const wantPinEl = document.getElementById('set-pin-enable'); const wantPin = wantPinEl ? wantPinEl.checked : false; 
@@ -1866,7 +2260,9 @@
             const thHsn = window.isFeatureEnabled('hsn') ? '<th class="py-2 px-2 text-center w-16">HSN</th>' : '';
             const itemsHtml = inv.items.map((item, idx) => {
                 const tdHsn = window.isFeatureEnabled('hsn') ? `<td class="py-2 text-center align-top text-[11px]">${item.hsn || '-'}</td>` : '';
-                return `<tr class="border-b ${tpl === 'bold' ? 'border-black' : 'border-slate-200'}"><td class="py-2 text-center align-top">${idx + 1}</td><td class="py-2 align-top"><div class="font-bold text-slate-800">${item.name}</div>${(window.isFeatureEnabled('batch') && (item.batch || item.expiry)) ? `<div class="text-[10px] text-slate-500 mt-1 font-medium">Batch: ${item.batch||'-'} | Exp: ${item.expiry||'-'}</div>` : ''}</td>${tdHsn}<td class="py-2 text-center align-top font-medium">${item.qty}</td><td class="py-2 text-right align-top text-slate-600">${window.formatCurrency(item.rate, curr)}</td><td class="py-2 text-center align-top text-slate-600">${item.gst}%</td><td class="py-2 text-right font-bold align-top text-slate-800">${window.formatCurrency(item.qty * item.rate, curr)}</td></tr>`;
+                const isFree = item.isFreebie;
+                const effectiveRate = isFree ? 0 : item.rate;
+                return `<tr class="border-b ${tpl === 'bold' ? 'border-black' : 'border-slate-200'}"><td class="py-2 text-center align-top">${idx + 1}</td><td class="py-2 align-top"><div class="font-bold text-slate-800">${item.name} ${isFree ? '<span class="text-[9px] bg-emerald-100 text-emerald-800 ml-1 px-1 rounded">FREE</span>' : ''}</div>${(window.isFeatureEnabled('batch') && (item.batch || item.expiry)) ? `<div class="text-[10px] text-slate-500 mt-1 font-medium">Batch: ${item.batch||'-'} | Exp: ${item.expiry||'-'}</div>` : ''}</td>${tdHsn}<td class="py-2 text-center align-top font-medium">${item.qty}</td><td class="py-2 text-right align-top text-slate-600 ${isFree ? 'line-through' : ''}">${window.formatCurrency(item.rate, curr)}</td><td class="py-2 text-center align-top text-slate-600">${isFree ? 0 : item.gst}%</td><td class="py-2 text-right font-bold align-top text-slate-800">${window.formatCurrency(item.qty * effectiveRate, curr)}</td></tr>`;
             }).join('');
 
             let headerStyles = ''; let tableHeadStyles = ''; let totalStyles = ''; let fontClass = 'font-sans';

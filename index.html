@@ -210,6 +210,22 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f0f2f5;color:#0f172a
 #auth-wrap{background:linear-gradient(135deg,#064e3b,#0d1117)}
 .auth-card{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);
   border:1px solid rgba(255,255,255,.09);border-radius:20px}
+/* Auth inputs - dark bg so text must be white and visible while typing */
+#auth-wrap .inp{
+  background:rgba(255,255,255,0.08) !important;
+  border-color:rgba(255,255,255,0.15) !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  caret-color:#10b981 !important;
+}
+#auth-wrap .inp:focus{
+  background:rgba(255,255,255,0.12) !important;
+  border-color:#10b981 !important;
+  box-shadow:0 0 0 3px rgba(16,185,129,0.2) !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+#auth-wrap .inp::placeholder{color:rgba(255,255,255,0.35) !important;-webkit-text-fill-color:rgba(255,255,255,0.35) !important;}
 
 /* ── SPLASH ── */
 #splash{background:linear-gradient(135deg,#064e3b,#0d1117)}
@@ -596,15 +612,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f0f2f5;color:#0f172a
             <div class="space-y-2.5">
               <div class="split-row">
                 <div class="split-icon bg-emerald-100"><i data-lucide="smartphone" class="w-4 h-4 text-emerald-600"></i></div>
-                <div class="flex-1"><label class="lbl">UPI (₹)</label><input type="number" id="split-upi" value="0" min="0" class="inp text-sm" oninput="updateSplitBalance()"></div>
+                <div class="flex-1"><label class="lbl">UPI (₹)</label><input type="number" id="split-upi" value="0" min="0" class="inp text-sm" oninput="updateSplitBalance('upi')"></div>
               </div>
               <div class="split-row">
                 <div class="split-icon bg-slate-100"><i data-lucide="banknote" class="w-4 h-4 text-slate-600"></i></div>
-                <div class="flex-1"><label class="lbl">Cash (₹)</label><input type="number" id="split-cash" value="0" min="0" class="inp text-sm" oninput="updateSplitBalance()"></div>
+                <div class="flex-1"><label class="lbl">Cash (₹)</label><input type="number" id="split-cash" value="0" min="0" class="inp text-sm" oninput="updateSplitBalance('cash')"></div>
               </div>
               <div class="split-row">
                 <div class="split-icon bg-amber-100"><i data-lucide="clock" class="w-4 h-4 text-amber-600"></i></div>
-                <div class="flex-1"><label class="lbl">Credit (₹)</label><input type="number" id="split-credit" value="0" min="0" class="inp text-sm" oninput="updateSplitBalance()"></div>
+                <div class="flex-1"><label class="lbl">Credit (₹)</label><input type="number" id="split-credit" value="0" min="0" class="inp text-sm" oninput="updateSplitBalance('credit')"></div>
               </div>
             </div>
             <div class="mt-3 p-2.5 rounded-lg bg-white border border-blue-200 text-xs">
@@ -1262,7 +1278,7 @@ window.addEventListener('resize', scaleInv);
 
 // ── WHATSAPP SHARE ──
 async function shareInvoiceWA() {
-    var id = window._curInvId;
+    var id = window._curInvId || window._currentViewInvoiceId;
     if(!id) return;
     var inv = window.AppState && window.AppState.invoices.find(function(i){ return i.id===id; });
     if(!inv) return;
@@ -1583,9 +1599,18 @@ window.toggleClientModal = function(show,isNew,id){ if(show) openClientDrawer(id
 window.editClient = function(id){ openClientDrawer(id,false); };
 
 // ── SPLIT PAYMENT ──
-function updateSplitBalance() {
+function updateSplitBalance(changedField) {
     var upi = parseFloat(document.getElementById('split-upi').value)||0;
     var cash = parseFloat(document.getElementById('split-cash').value)||0;
+    var fmt2 = window.formatCurrency||function(a){ return '\u20b9'+Number(a).toFixed(2); };
+    var totals2 = window.calculateInvoiceTotals ? window.calculateInvoiceTotals() : {grandTotal:0};
+    var grand2 = totals2.grandTotal||0;
+    // Auto-calculate credit = remaining amount (total - upi - cash)
+    var autoCredit = Math.max(0, grand2 - upi - cash);
+    var creditEl = document.getElementById('split-credit');
+    if(creditEl && changedField !== 'credit') {
+        creditEl.value = autoCredit.toFixed(2);
+    }
     var credit = parseFloat(document.getElementById('split-credit').value)||0;
     var fmt = window.formatCurrency||function(a){ return '₹'+Number(a).toFixed(2); };
     var grand = 0;
@@ -3267,9 +3292,56 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch(e) { window.showToast("Failed to save settings.", "error"); }
         }
 
-        window.viewInvoice = function(id) { const inv = window.AppState.invoices.find(i => i.id === id); if(!inv) return; setHTML('invoice-render-area', window.generateInvoiceHTML(inv)); const mod = document.getElementById('invoice-modal'); if(mod) mod.style.display = 'flex'; }
-        window.closeInvoiceModal = function() { const mod = document.getElementById('invoice-modal'); if(mod) mod.style.display = 'none'; }
-        window.downloadPDF = function() { window.showToast("Downloading PDF..."); const element = document.getElementById('invoice-render-area'); const invId = element.querySelector('.inv-id-tracker').dataset.id; html2pdf().set({ margin: 0, filename: `${invId}.pdf`, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 3, useCORS: true, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save(); }
+        window.viewInvoice = function(id) {
+            var inv = window.AppState.invoices.find(function(i){ return i.id===id; });
+            if(!inv) return;
+            window._curInvId = id;
+            var area = document.getElementById('invoice-render-area');
+            if(area && window.generateInvoiceHTML) area.innerHTML = window.generateInvoiceHTML(inv);
+            var sub = document.getElementById('inv-modal-subtitle'); if(sub) sub.textContent = id;
+            var mod = document.getElementById('invoice-modal');
+            if(mod) mod.classList.add('open');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(function(){ if(typeof scaleInv==='function') scaleInv(); }, 80);
+        }
+        window.closeInvoiceModal = function() {
+            var mod = document.getElementById('invoice-modal');
+            if(mod) mod.classList.remove('open');
+        }
+        window.downloadPDF = async function() {
+            window.showToast && window.showToast('Generating PDF...');
+            var element = document.getElementById('invoice-render-area');
+            if(!element) return;
+            var invEl = element.querySelector('.inv-id-tracker');
+            var invId = invEl ? invEl.dataset.id : 'invoice';
+            try {
+                var blob = await html2pdf().set({
+                    margin:0, filename:invId+'.pdf',
+                    image:{type:'jpeg',quality:0.95},
+                    html2canvas:{scale:3,useCORS:true,scrollY:0,logging:false},
+                    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+                }).from(element).output('blob');
+                // Try standard download
+                try {
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url; a.download = invId+'.pdf';
+                    document.body.appendChild(a); a.click();
+                    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+                    window.showToast && window.showToast('PDF downloaded!');
+                } catch(e2) {
+                    // WebView fallback: open as data URL
+                    var reader = new FileReader();
+                    reader.onload = function(ev) {
+                        var win = window.open('');
+                        if(win) { win.document.write('<iframe src="'+ev.target.result+'" width="100%" height="100%" style="border:none"></iframe>'); }
+                        else { window.location.href = ev.target.result; }
+                    };
+                    reader.readAsDataURL(blob);
+                    window.showToast && window.showToast('PDF opening...');
+                }
+            } catch(e) { window.showToast && window.showToast('PDF error: '+e.message,'error'); }
+        }
 
         window.generateInvoiceHTML = function(inv) {
             const s = window.AppState.settings; const tpl = s.template || 'modern'; const curr = inv.currency || 'INR';

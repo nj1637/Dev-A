@@ -2015,7 +2015,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCustomToken, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const defaultAppId = 'dev-ayurveda-pro-auth';
         const appId = typeof __app_id !== 'undefined' ? __app_id : defaultAppId;
@@ -2029,16 +2029,14 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             app = initializeApp(firebaseConfig); 
             auth = getAuth(app); 
-            db = getFirestore(app);
-
-            // ✅ OFFLINE PERSISTENCE — IndexedDB
-            enableIndexedDbPersistence(db).catch((err) => {
-                if (err.code === 'failed-precondition') {
-                    console.warn('Persistence failed: multiple tabs open');
-                } else if (err.code === 'unimplemented') {
-                    console.warn('Persistence not supported in this browser');
-                }
-            });
+            // ✅ Firebase 11.x offline persistence (new API — replaces deprecated enableIndexedDbPersistence)
+            try {
+                db = initializeFirestore(app, {
+                    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+                });
+            } catch(e) {
+                db = getFirestore(app); // fallback
+            }
 
             // Expose for non-module scripts
             window._auth = auth;

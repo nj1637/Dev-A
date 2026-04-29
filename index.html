@@ -17,6 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
 html,body{height:100%;height:100dvh;overflow:hidden;max-width:100vw}
@@ -1418,6 +1419,18 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f0f2f5;color:#0f172a
       <div class="text-xs text-slate-400 mt-0.5">GST inclusive/exclusive</div>
     </div>
 
+    <div class="card p-4 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all" onclick="openSettingsModal('gdrive-backup')">
+      <div class="acc-icon mb-3" style="background:#e8f0fe"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8v8m0-8-3 3m3-3 3 3" stroke="#4285F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="13" width="18" height="7" rx="2" stroke="#4285F4" stroke-width="1.5" fill="none"/></svg></div>
+      <div class="font-bold text-slate-800 text-sm">Drive Backup</div>
+      <div class="text-xs text-slate-400 mt-0.5">Auto-sync to Google Drive</div>
+    </div>
+
+    <div class="card p-4 cursor-pointer hover:shadow-md hover:border-orange-200 transition-all" onclick="openSettingsModal('gst-calc')">
+      <div class="acc-icon bg-orange-50 mb-3"><i data-lucide="percent" class="w-5 h-5 text-orange-600"></i></div>
+      <div class="font-bold text-slate-800 text-sm">GST Calc Method</div>
+      <div class="text-xs text-slate-400 mt-0.5">Mixed-rate tax handling</div>
+    </div>
+
     <div class="card p-4 cursor-pointer hover:shadow-md hover:border-emerald-200 transition-all" onclick="openSettingsModal('inv-numbering')">
       <div class="acc-icon bg-blue-50 mb-3"><i data-lucide="hash" class="w-5 h-5 text-blue-600"></i></div>
       <div class="font-bold text-slate-800 text-sm">Invoice Numbering</div>
@@ -1543,7 +1556,29 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f0f2f5;color:#0f172a
       </div>
     </div>
 
-    <!-- Active Sessions Card -->
+    <!-- ☁️ Google Drive Backup Card -->
+    <div class="card p-4">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#e8f0fe">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.56 2.9A6.5 6.5 0 0 1 19.5 9.5a5 5 0 0 1-.07 9.99H5.5a4.5 4.5 0 0 1-.62-8.96A6.5 6.5 0 0 1 8.56 2.9z" fill="#4285F4" opacity=".18"/><path d="M12 8v8m0-8-3 3m3-3 3 3" stroke="#4285F4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-bold text-slate-800 text-sm">Google Drive Backup</div>
+          <div class="text-xs text-slate-400" id="gdrive-status-text">Not configured</div>
+        </div>
+        <div id="gdrive-status-dot" class="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0"></div>
+      </div>
+      <div id="gdrive-last-backup" class="text-[10px] text-slate-400 mb-2 hidden">Last backup: —</div>
+      <div id="gdrive-backup-log-mini" class="mb-2 hidden space-y-1"></div>
+      <div class="flex gap-2">
+        <button onclick="window.backupToGDrive&&backupToGDrive()" id="gdrive-backup-btn" class="btn btn-sm flex-1 justify-center text-xs" style="background:#e8f0fe;color:#1a73e8;border:1px solid #c5d8f8;font-weight:700">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="flex-shrink-0"><path d="M12 8v8m0-8-3 3m3-3 3 3" stroke="#1a73e8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Backup Now
+        </button>
+        <button onclick="openSettingsModal('gdrive-backup')" class="btn btn-ghost btn-sm text-xs px-3">
+          <i data-lucide="settings-2" class="w-3 h-3"></i> Setup
+        </button>
+      </div>
+    </div>
     <div class="card p-4">
       <div class="flex items-center gap-3 mb-3">
         <div class="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -3434,6 +3469,222 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
+        // ☁️ ── GOOGLE DRIVE BACKUP ENGINE ────────────────────────────────────
+        (function() {
+            var _token = null;        // in-memory OAuth access token
+            var _tokenClient = null;  // GIS token client instance
+            var _pendingCallback = null;
+
+            // Initialise / re-initialise the GIS token client
+            window._initGDriveClient = function() {
+                var cid = window.AppState && window.AppState.settings && window.AppState.settings.gdriveClientId;
+                if (!cid || !window.google || !window.google.accounts) return;
+                try {
+                    _tokenClient = window.google.accounts.oauth2.initTokenClient({
+                        client_id: cid,
+                        scope: 'https://www.googleapis.com/auth/drive.file',
+                        callback: function(resp) {
+                            if (resp && resp.access_token) {
+                                _token = resp.access_token;
+                                if (_pendingCallback) { var cb = _pendingCallback; _pendingCallback = null; cb(); }
+                            } else {
+                                window.showToast && window.showToast('Google Sign-in failed or cancelled', 'error');
+                            }
+                        }
+                    });
+                    _updateGDriveUI();
+                } catch(e) { console.warn('GDrive init:', e); }
+            };
+
+            // Request token (shows popup if not already signed in)
+            function _requestToken(cb) {
+                if (_token) { cb(); return; }
+                if (!_tokenClient) {
+                    window.showToast && window.showToast('Configure Google Client ID in Settings → Google Drive Backup', 'warning');
+                    return;
+                }
+                _pendingCallback = cb;
+                _tokenClient.requestAccessToken({ prompt: '' }); // '' = silent if session exists
+            }
+
+            // Drive REST helpers
+            async function _driveGet(url) {
+                var r = await fetch(url, { headers: { Authorization: 'Bearer ' + _token } });
+                if (r.status === 401) { _token = null; throw new Error('token_expired'); }
+                return r.json();
+            }
+            async function _drivePost(url, body, headers) {
+                var r = await fetch(url, {
+                    method: 'POST',
+                    headers: Object.assign({ Authorization: 'Bearer ' + _token }, headers||{}),
+                    body: body
+                });
+                if (r.status === 401) { _token = null; throw new Error('token_expired'); }
+                return r.json();
+            }
+            async function _driveDelete(fileId) {
+                await fetch('https://www.googleapis.com/drive/v3/files/' + fileId, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + _token }
+                });
+            }
+
+            // Find or create the "ERP Backups" folder
+            async function _getOrCreateFolder() {
+                var q = encodeURIComponent("name='ERP Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+                var res = await _driveGet('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id)');
+                if (res.files && res.files.length > 0) return res.files[0].id;
+                // Create it
+                var meta = { name: 'ERP Backups', mimeType: 'application/vnd.google-apps.folder' };
+                var created = await _drivePost('https://www.googleapis.com/drive/v3/files', JSON.stringify(meta), { 'Content-Type': 'application/json' });
+                return created.id;
+            }
+
+            // Upload backup JSON file using multipart upload
+            async function _uploadFile(folderId, fileName, jsonStr) {
+                var boundary = 'erp_backup_boundary';
+                var meta = JSON.stringify({ name: fileName, parents: [folderId] });
+                var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+                    + meta + '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n'
+                    + jsonStr + '\r\n--' + boundary + '--';
+                return _drivePost(
+                    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
+                    body,
+                    { 'Content-Type': 'multipart/related; boundary=' + boundary }
+                );
+            }
+
+            // Delete files older than 30 days in the ERP Backups folder
+            async function _pruneOldFiles(folderId) {
+                var cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+                var q = encodeURIComponent("'"+folderId+"' in parents and createdTime < '"+cutoff+"' and trashed=false");
+                var res = await _driveGet('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)');
+                if (res.files) {
+                    for (var i = 0; i < res.files.length; i++) {
+                        await _driveDelete(res.files[i].id);
+                    }
+                }
+            }
+
+            // Build backup payload
+            function _buildBackupPayload() {
+                return JSON.stringify({
+                    exportedAt: new Date().toISOString(),
+                    businessName: (window.AppState.settings && window.AppState.settings.businessName) || 'My Business',
+                    invoices:  window.AppState.invoices  || [],
+                    products:  window.AppState.products  || [],
+                    clients:   window.AppState.clients   || [],
+                    expenses:  window.AppState.expenses  || [],
+                    purchaseOrders: window.AppState.purchaseOrders || [],
+                    vendors:   window.AppState.vendors   || [],
+                    settings:  window.AppState.settings  || {}
+                });
+            }
+
+            // ─── LOG HELPERS ───────────────────────────────────────────────
+            function _logBackup(fileName, ok, err) {
+                var s = window.AppState && window.AppState.settings;
+                if (!s) return;
+                if (!s.gdriveBackupLog) s.gdriveBackupLog = [];
+                var now = new Date();
+                var ts  = now.toLocaleDateString('en-IN') + ' ' + now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+                s.gdriveBackupLog.push({ ts: ts, file: fileName, ok: ok, err: err || '' });
+                if (s.gdriveBackupLog.length > 8) s.gdriveBackupLog = s.gdriveBackupLog.slice(-8);
+                _updateGDriveUI();
+            }
+
+            function _updateGDriveUI() {
+                var s = (window.AppState && window.AppState.settings) || {};
+                var hasCid = !!s.gdriveClientId;
+                var log    = s.gdriveBackupLog || [];
+                var lastOk = log.slice().reverse().find(function(e){ return e.ok; });
+
+                var dot  = document.getElementById('gdrive-status-dot');
+                var txt  = document.getElementById('gdrive-status-text');
+                var last = document.getElementById('gdrive-last-backup');
+                var mini = document.getElementById('gdrive-backup-log-mini');
+
+                if (dot) dot.className = 'w-2 h-2 rounded-full flex-shrink-0 ' + (hasCid ? 'bg-blue-400' : 'bg-slate-300');
+                if (txt) txt.textContent = hasCid ? (lastOk ? 'Connected' : 'Configured — not backed up yet') : 'Not configured';
+
+                if (lastOk && last) {
+                    last.textContent = 'Last backup: ' + lastOk.ts;
+                    last.classList.remove('hidden');
+                }
+                if (mini && log.length > 0) {
+                    mini.classList.remove('hidden');
+                    mini.innerHTML = log.slice(-3).reverse().map(function(e){
+                        return '<div class="flex items-center gap-1.5">'
+                            + '<span class="text-[9px] '+(e.ok?'text-emerald-600':'text-red-500')+' font-bold">'+(e.ok?'✓':'✗')+'</span>'
+                            + '<span class="text-[10px] text-slate-500 truncate">'+e.ts+'</span>'
+                            + '<span class="text-[10px] text-slate-400 truncate ml-auto">'+e.file+'</span>'
+                            + '</div>';
+                    }).join('');
+                }
+            }
+
+            // ─── MAIN EXPORT: backupToGDrive ──────────────────────────────
+            window.backupToGDrive = function() {
+                var cid = window.AppState && window.AppState.settings && window.AppState.settings.gdriveClientId;
+                if (!cid) {
+                    window.showToast && window.showToast('Set up Google Client ID first — Settings → Google Drive Backup', 'warning');
+                    if (window.openSettingsModal) window.openSettingsModal('gdrive-backup');
+                    return;
+                }
+                var btn = document.getElementById('gdrive-backup-btn');
+                if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Backing up…'; }
+
+                _requestToken(async function() {
+                    var bizName = (window.AppState.settings && window.AppState.settings.businessName) || 'MyBusiness';
+                    var dateStr = new Date().toISOString().split('T')[0];
+                    var fileName = bizName.replace(/\s+/g,'_') + '_backup_' + dateStr + '.json';
+                    try {
+                        var payload  = _buildBackupPayload();
+                        var folderId = await _getOrCreateFolder();
+                        await _uploadFile(folderId, fileName, payload);
+                        await _pruneOldFiles(folderId);
+                        localStorage.setItem('ayur_gdrive_last_backup', new Date().toISOString());
+                        _logBackup(fileName, true);
+                        window.showToast && window.showToast('✅ Backed up to Google Drive: ' + fileName);
+                    } catch(e) {
+                        if (e.message === 'token_expired') {
+                            _token = null;
+                            window.showToast && window.showToast('Session expired — tap again to re-authorise', 'warning');
+                        } else {
+                            _logBackup(fileName||'backup.json', false, e.message);
+                            window.showToast && window.showToast('Drive backup failed: ' + e.message, 'error');
+                        }
+                    } finally {
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 8v8m0-8-3 3m3-3 3 3" stroke="#1a73e8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Backup Now'; }
+                    }
+                });
+            };
+
+            // ─── AUTO DAILY BACKUP ────────────────────────────────────────
+            window._checkAutoDriveBackup = function() {
+                var s = window.AppState && window.AppState.settings;
+                if (!s || !s.gdriveClientId || s.gdriveAutoBackup === false) return;
+                var lastRaw = localStorage.getItem('ayur_gdrive_last_backup');
+                if (!lastRaw) { window.backupToGDrive(); return; }
+                var last = new Date(lastRaw);
+                var now  = new Date();
+                var daysSince = (now - last) / (1000 * 60 * 60 * 24);
+                if (daysSince >= 1) window.backupToGDrive();
+            };
+
+            // Initialise when GIS library is ready (may load async)
+            function _tryInit() {
+                if (window.google && window.google.accounts) {
+                    window._initGDriveClient();
+                } else {
+                    setTimeout(_tryInit, 800);
+                }
+            }
+            _tryInit();
+            _updateGDriveUI();
+        })();
+        // ─────────────────────────────────────────────────────────────────────
+
         // ✅ ACTIVE SESSIONS — populate browser/device info
         function populateSessionInfo() {
             const ua = navigator.userAgent;
@@ -3779,6 +4030,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     populateSessionInfo();
                     // Auto-backup on login from any existing local backup
                     safeLocalSave();
+                    // ☁️ Auto Google Drive daily backup (runs silently if configured)
+                    setTimeout(function(){ window._checkAutoDriveBackup && window._checkAutoDriveBackup(); }, 3000);
                 } else {
                     // Check for saved employee session first
                     if(window._restoreEmployeeSession && window._restoreEmployeeSession()) {
@@ -4486,8 +4739,10 @@ document.addEventListener('DOMContentLoaded', function() {
             setText('summary-subtotal', window.formatCurrency(taxableDisplay, curr));
             setText('summary-tax', window.formatCurrency(taxSum, curr));
             setText('summary-grand', window.formatCurrency(displayAmt, curr));
-            const cgstAmt = Math.round((taxSum / 2) * 100) / 100;
-            const sgstAmt = Math.round((taxSum - cgstAmt) * 100) / 100;
+            // Use selected GST method for CGST/SGST display
+            var gstBD = window.getGSTBreakdown ? window.getGSTBreakdown(draft.items) : null;
+            var cgstAmt = gstBD ? gstBD.totalCgst : Math.round((taxSum / 2) * 100) / 100;
+            var sgstAmt = gstBD ? gstBD.totalSgst : Math.round((taxSum - cgstAmt) * 100) / 100;
             setText('summary-cgst', window.formatCurrency(cgstAmt, curr));
             setText('summary-sgst', window.formatCurrency(sgstAmt, curr));
             const grandLabel = document.getElementById('net-payable-label');
@@ -4503,6 +4758,99 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return { subtotal:baseSum, totalTax:taxSum, grandTotal, discountAmountCalculated:discAmt, tdsCalculated:tdsAmt };
         }
+
+        // ── GST BREAKDOWN ENGINE ──────────────────────────────────────────────
+        window.getGSTBreakdown = function(items, method) {
+            method = method || (window.AppState && window.AppState.settings && window.AppState.settings.gstCalcMethod) || 'simple';
+            // fmt2 = round to 2dp for DISPLAY only — never use for accumulation
+            var fmt2 = function(n){ return Math.round(n*100)/100; };
+            // pStr = clean percentage string e.g. 9 → "9", 2.5 → "2.5"
+            var pStr = function(n){ return (n % 1 === 0) ? String(n) : n.toFixed(1); };
+
+            // Build per-item data — keep exact (unrounded) values throughout
+            var itemData = (items || []).map(function(item) {
+                var qty = Number(item.qty)||0, rate = Number(item.rate)||0, gst = Number(item.gst)||0;
+                var base = gst > 0 ? (rate/(1+gst/100)) * qty : rate * qty;
+                var tax  = gst > 0 ? (rate - rate/(1+gst/100)) * qty : 0;
+                return { name: item.name||'Item', gstPct: gst, base: base, tax: tax }; // EXACT — no rounding
+            });
+
+            var totalBaseExact = itemData.reduce(function(s,i){ return s + i.base; }, 0);
+            var totalTaxExact  = itemData.reduce(function(s,i){ return s + i.tax;  }, 0);
+            var effPct = totalBaseExact > 0 ? (totalTaxExact / totalBaseExact * 100) : 0;
+
+            if (method === 'ratewise') {
+                // Group into slabs — accumulate exact sums
+                var slabs = {};
+                itemData.forEach(function(i) {
+                    var k = String(i.gstPct);
+                    if (!slabs[k]) slabs[k] = { pct: i.gstPct, base: 0, tax: 0 };
+                    slabs[k].base += i.base; // exact
+                    slabs[k].tax  += i.tax;  // exact
+                });
+                var rows = [];
+                var totCExact = 0;
+                Object.keys(slabs).map(Number).sort(function(a,b){return a-b;}).forEach(function(pct) {
+                    var sl = slabs[String(pct)];
+                    if (pct === 0) {
+                        rows.push({ type:'exempt', taxable: fmt2(sl.base), cgst:0, sgst:0 });
+                        return;
+                    }
+                    var cExact = sl.tax / 2; // exact half
+                    totCExact += cExact;
+                    var cDisp  = fmt2(cExact);
+                    var sDisp  = fmt2(sl.tax) - cDisp; // ensures row CGST+SGST = fmt2(slab_tax) exactly
+                    rows.push({ type:'slab', taxable: fmt2(sl.base), cgstPct: pct/2, sgstPct: pct/2, cgst: cDisp, sgst: sDisp });
+                });
+                // Final totals: round from exact accumulation — no residual penny
+                var totalCgst = fmt2(totCExact);
+                var totalSgst = fmt2(totalTaxExact) - totalCgst;
+                return { method:'ratewise', rows:rows, totalCgst: totalCgst, totalSgst: totalSgst, totalTax: fmt2(totalTaxExact) };
+            }
+
+            if (method === 'itemwise') {
+                var rows = [];
+                var totCExact = 0;
+                itemData.forEach(function(i) {
+                    var cExact = i.tax / 2; // exact half
+                    totCExact += cExact;
+                    var cDisp  = fmt2(cExact);
+                    var sDisp  = fmt2(i.tax) - cDisp; // ensures item CGST+SGST = fmt2(item_tax) exactly
+                    rows.push({ type:'item', name: i.name, gstPct: i.gstPct, taxable: fmt2(i.base), cgst: cDisp, sgst: sDisp });
+                });
+                var totalCgst = fmt2(totCExact);
+                var totalSgst = fmt2(totalTaxExact) - totalCgst;
+                return { method:'itemwise', rows:rows, totalCgst: totalCgst, totalSgst: totalSgst, totalTax: fmt2(totalTaxExact) };
+            }
+
+            if (method === 'weighted') {
+                var halfPct  = effPct / 2;
+                var c = fmt2(totalTaxExact / 2);
+                var s2 = fmt2(totalTaxExact) - c; // sgst = total - cgst (exact complement)
+                return { method:'weighted', totalCgst:c, totalSgst:s2, totalTax:fmt2(totalTaxExact),
+                    rows:[{ type:'single', label:'CGST (Eff. '+pStr(halfPct)+'%)', amount:c, kind:'cgst' },
+                          { type:'single', label:'SGST (Eff. '+pStr(halfPct)+'%)', amount:s2, kind:'sgst' }] };
+            }
+
+            if (method === 'highest') {
+                var maxPct = 0;
+                itemData.forEach(function(i){ if(i.gstPct > maxPct) maxPct = i.gstPct; });
+                var c  = fmt2(totalTaxExact / 2);
+                var s2 = fmt2(totalTaxExact) - c;
+                return { method:'highest', totalCgst:c, totalSgst:s2, totalTax:fmt2(totalTaxExact),
+                    rows:[{ type:'single', label:'CGST ('+pStr(maxPct/2)+'% — max slab)', amount:c, kind:'cgst' },
+                          { type:'single', label:'SGST ('+pStr(maxPct/2)+'% — max slab)', amount:s2, kind:'sgst' }] };
+            }
+
+            // Default: simple split
+            var ep2str = pStr(effPct/2);
+            var c  = fmt2(totalTaxExact / 2);
+            var s2 = fmt2(totalTaxExact) - c;
+            return { method:'simple', totalCgst:c, totalSgst:s2, totalTax:fmt2(totalTaxExact),
+                rows:[{ type:'single', label:'CGST ('+ep2str+'%)', amount:c, kind:'cgst' },
+                      { type:'single', label:'SGST ('+ep2str+'%)', amount:s2, kind:'sgst' }] };
+        };
+        // ─────────────────────────────────────────────────────────────────────
 
         window.restoreDraftToUI = function() {
             const d = window.AppState.draft;
@@ -5660,6 +6008,9 @@ try {
                 s.netProfitFormula = document.getElementById('set-profit-formula') ? document.getElementById('set-profit-formula').value : 'standard';
                 s.netPayableExclGST = document.getElementById('set-net-excl-gst') ? document.getElementById('set-net-excl-gst').checked : false;
                 s.taxableExclGST = document.getElementById('set-taxable-excl-gst') ? document.getElementById('set-taxable-excl-gst').checked : false;
+                // GST method persistence (saved via modal save fn, but re-read here for safety)
+                if (!s.gstCalcMethod) s.gstCalcMethod = 'simple';
+                if (s.gstBreakdownOnInvoice === undefined) s.gstBreakdownOnInvoice = true;
                 
                 s.features = s.features || {};
                 const allToggles = ['expenses','multiDoc','currency','shipping','tds','rcm','hsn','dueDate','ledger','creditNote','margin','batch','deleteBtn','stamp','returnStock','autoCreateClient','autoCreateProduct','waQRLink','barcodeScannerFeature','aiPriceSuggestion','recurringInvoices','digitalQROnInvoice'];
@@ -5975,12 +6326,58 @@ try {
         });
         const taxableAmt = calcBase;
         const taxAmt = calcTax || Number(inv.totalTax) || 0;
-        const cgst = Math.round((taxAmt / 2) * 100) / 100;
-        const sgst = Math.round((taxAmt - cgst) * 100) / 100;
+        // ── NEW: method-aware GST breakdown ──
+        const gstMethod = (window.AppState && window.AppState.settings && window.AppState.settings.gstCalcMethod) || 'simple';
+        const showGSTBreakdown = (window.AppState && window.AppState.settings && window.AppState.settings.gstBreakdownOnInvoice !== false);
+        const gstBD = window.getGSTBreakdown ? window.getGSTBreakdown(inv.items, gstMethod) : null;
+        const cgst = gstBD ? gstBD.totalCgst : Math.round((taxAmt / 2) * 100) / 100;
+        const sgst = gstBD ? gstBD.totalSgst : Math.round((taxAmt - cgst) * 100) / 100;
         // Effective GST rate for label — derived from actual totals, not just first item
         const effectiveGstPct = (taxableAmt > 0 && taxAmt > 0) ? Math.round((taxAmt / taxableAmt) * 100) : (inv.items&&inv.items[0] ? Number(inv.items[0].gst) : 0);
         const cgstPct = (effectiveGstPct / 2).toFixed(effectiveGstPct % 2 === 0 ? 0 : 1);
         const sgstPct = cgstPct;
+
+        // Build GST rows HTML for invoice summary box
+        const _fmtC = (v) => window.formatCurrency(v, curr);
+        let gstSummaryRowsHtml = '';
+        if (!showGSTBreakdown || !gstBD) {
+            // Fallback: simple two-line display
+            gstSummaryRowsHtml = `
+                <tr><td class="py-1 text-slate-400 text-[11px]">CGST (${cgstPct}%)</td><td class="py-1 text-right text-slate-400 text-[11px]">${_fmtC(cgst)}</td></tr>
+                <tr class="border-b border-slate-100"><td class="py-1 pb-2 text-slate-400 text-[11px]">SGST (${sgstPct}%)</td><td class="py-1 pb-2 text-right text-slate-400 text-[11px]">${_fmtC(sgst)}</td></tr>`;
+        } else if (gstBD.method === 'ratewise') {
+            let rateRows = '';
+            gstBD.rows.forEach(function(row) {
+                if (row.type === 'exempt') {
+                    rateRows += `<tr><td colspan="2" class="py-0.5 text-slate-400 text-[10px] italic">GST @ 0% (Exempt) — Taxable: ${_fmtC(row.taxable)}</td></tr>`;
+                } else {
+                    rateRows += `
+                    <tr><td class="py-0.5 pl-2 text-slate-400 text-[10px]">• CGST ${row.cgstPct}% on ${_fmtC(row.taxable)}</td><td class="py-0.5 text-right text-slate-400 text-[10px]">${_fmtC(row.cgst)}</td></tr>
+                    <tr><td class="py-0.5 pl-2 text-slate-400 text-[10px]">• SGST ${row.sgstPct}% on ${_fmtC(row.taxable)}</td><td class="py-0.5 text-right text-slate-400 text-[10px]">${_fmtC(row.sgst)}</td></tr>`;
+                }
+            });
+            gstSummaryRowsHtml = `
+                <tr><td class="py-1 text-slate-500 text-[11px] font-semibold">GST (Rate-wise Breakup)</td><td></td></tr>
+                ${rateRows}
+                <tr class="border-b border-slate-100"><td class="py-1 pb-2 text-[11px] text-slate-500 font-semibold">Total CGST + SGST</td><td class="py-1 pb-2 text-right text-[11px] font-semibold text-slate-700">${_fmtC(cgst + sgst)}</td></tr>`;
+        } else if (gstBD.method === 'itemwise') {
+            let itemRows = '';
+            gstBD.rows.forEach(function(row) {
+                itemRows += `
+                <tr><td class="py-0.5 pl-2 text-slate-400 text-[10px]" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">• ${row.name} (${row.gstPct}%)</td><td class="py-0.5 text-right text-slate-400 text-[10px]">C:${_fmtC(row.cgst)} S:${_fmtC(row.sgst)}</td></tr>`;
+            });
+            gstSummaryRowsHtml = `
+                <tr><td class="py-1 text-slate-500 text-[11px] font-semibold">GST (Item-wise)</td><td></td></tr>
+                ${itemRows}
+                <tr class="border-b border-slate-100"><td class="py-1 pb-2 text-[11px] text-slate-500 font-semibold">Total CGST + SGST</td><td class="py-1 pb-2 text-right text-[11px] font-semibold text-slate-700">${_fmtC(cgst + sgst)}</td></tr>`;
+        } else {
+            // simple / weighted / highest — use breakdown row labels
+            const r0 = gstBD.rows[0] || {}, r1 = gstBD.rows[1] || {};
+            gstSummaryRowsHtml = `
+                <tr><td class="py-1 text-slate-400 text-[11px]">${r0.label||'CGST'}</td><td class="py-1 text-right text-slate-400 text-[11px]">${_fmtC(cgst)}</td></tr>
+                <tr class="border-b border-slate-100"><td class="py-1 pb-2 text-slate-400 text-[11px]">${r1.label||'SGST'}</td><td class="py-1 pb-2 text-right text-slate-400 text-[11px]">${_fmtC(sgst)}</td></tr>`;
+        }
+        // ─────────────────────────────────────────────────────────────
 
         // Determine text color for premium dark template
         const txtColor = (tpl==='premium') ? 'color:#e2e8f0;' : '';
@@ -6029,8 +6426,7 @@ try {
                 <div class="flex justify-end mb-8"><div class="w-80 text-[12px]">
                     <table class="w-full">
                         <tr class="border-b border-slate-100"><td class="py-1.5 text-slate-500">Taxable Amount${window.AppState.settings.taxableExclGST ? ' (excl. GST)' : ''}:</td><td class="py-1.5 text-right font-bold text-slate-800">${window.formatCurrency(window.AppState.settings.taxableExclGST ? taxableAmt : (taxableAmt + taxAmt), curr)}</td></tr>
-                        <tr><td class="py-1 text-slate-400 text-[11px]">CGST (${cgstPct}%)</td><td class="py-1 text-right text-slate-400 text-[11px]">${window.formatCurrency(cgst, curr)}</td></tr>
-                        <tr class="border-b border-slate-100"><td class="py-1 pb-2 text-slate-400 text-[11px]">SGST (${sgstPct}%)</td><td class="py-1 pb-2 text-right text-slate-400 text-[11px]">${window.formatCurrency(sgst, curr)}</td></tr>
+                        ${gstSummaryRowsHtml}
                         ${inv.discount > 0 ? `<tr class="border-b border-slate-100"><td class="py-1.5 text-emerald-600 font-medium">Discount (${inv.discountType==='percent'?inv.discount+'%':'Flat'}):</td><td class="py-1.5 text-right text-emerald-600 font-medium">- ${window.formatCurrency((Number(inv.subtotal)+Number(inv.totalTax)+Number(inv.tdsAmount||0)-Number(inv.grandTotal)),curr)}</td></tr>` : ''}
                         ${(window.isFeatureEnabled('tds') && inv.tdsAmount > 0) ? `<tr class="border-b border-slate-100"><td class="py-1.5 text-red-600 font-medium">TDS Deducted:</td><td class="py-1.5 text-right text-red-600 font-medium">- ${window.formatCurrency(inv.tdsAmount, curr)}</td></tr>` : ''}
                         <tr class="bg-slate-50 rounded"><td class="py-3 px-2 text-base font-bold text-slate-800 rounded-l">Net Payable:</td><td class="py-3 px-2 text-right text-2xl font-black ${totalStyles} rounded-r">${window.formatCurrency(inv.grandTotal, curr)}</td></tr>
@@ -7482,6 +7878,133 @@ window.updateGSTSummary = function() {
 var _currentSettingsModal = null;
 
 var _settingsModals = {
+  'gdrive-backup': {
+    title: 'Google Drive Backup',
+    sub: 'Auto-sync your ERP data to Google Drive',
+    icon: 'cloud', iconBg: 'bg-blue-50', iconColor: 'text-blue-600',
+    render: function() {
+      var s = (window.AppState && window.AppState.settings) || {};
+      var clientId  = s.gdriveClientId  || '';
+      var autoBackup = s.gdriveAutoBackup !== false;
+      var log = s.gdriveBackupLog || [];
+      var logHtml = log.length === 0 ? '<div class="text-xs text-slate-400 italic">No backups yet.</div>'
+        : log.slice(-8).reverse().map(function(e){
+            var pill = e.ok
+              ? 'background:#d1fae5;color:#065f46'
+              : 'background:#fee2e2;color:#991b1b';
+            return '<div class="flex items-center gap-2 py-1.5 border-b border-slate-50 last:border-0">'
+              + '<span class="text-[10px] font-mono text-slate-400 flex-shrink-0">'+e.ts+'</span>'
+              + '<span class="text-[11px] font-medium text-slate-700 flex-1 truncate">'+e.file+'</span>'
+              + '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0" style="'+pill+'">'+(e.ok?'✓ OK':'✗ Fail')+'</span>'
+              + '</div>';
+          }).join('');
+      return `<div class="space-y-4">
+        <div class="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-700 leading-relaxed">
+          <strong>One-time setup (free):</strong><br>
+          1. Go to <strong>console.cloud.google.com</strong><br>
+          2. Create a project → Enable <strong>Google Drive API</strong><br>
+          3. Create <strong>OAuth 2.0 Client ID</strong> → Web app → add your GitHub Pages URL as authorised origin<br>
+          4. Paste the Client ID below.
+        </div>
+        <div>
+          <label class="lbl">Google OAuth Client ID</label>
+          <input type="text" id="smod-gdrive-cid" class="inp text-sm bg-white font-mono" placeholder="xxxxxxxxxxxx-xxxx.apps.googleusercontent.com" value="${clientId}">
+        </div>
+        <label class="flex items-center gap-3 cursor-pointer p-3 rounded-xl hover:bg-slate-50 border border-slate-200">
+          <input type="checkbox" id="smod-gdrive-auto" ${autoBackup?'checked':''} class="w-4 h-4 accent-blue-500">
+          <div>
+            <div class="font-semibold text-slate-800 text-sm">Auto-backup daily on app open</div>
+            <div class="text-xs text-slate-400">Silently backs up once per day when you open the app</div>
+          </div>
+        </label>
+        <div class="border border-slate-100 rounded-xl overflow-hidden">
+          <div class="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Backup Log (last 8)</div>
+          <div class="px-3 py-2">${logHtml}</div>
+        </div>
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-100 text-xs text-amber-700">
+          📁 Files are saved in <strong>"ERP Backups"</strong> folder in your Google Drive. Only the last 30 days are kept. You own the files — this app can never read or delete your other Drive data.
+        </div>
+      </div>`;
+    },
+    save: function() {
+      var cid = document.getElementById('smod-gdrive-cid');
+      var auto = document.getElementById('smod-gdrive-auto');
+      if (window.AppState && window.AppState.settings) {
+        if (cid)  window.AppState.settings.gdriveClientId   = cid.value.trim();
+        if (auto) window.AppState.settings.gdriveAutoBackup = auto.checked;
+      }
+      if (window._initGDriveClient) window._initGDriveClient();
+      window.showToast && window.showToast('Google Drive settings saved!');
+    }
+  },
+  'gst-calc': {
+    title: 'GST Calculation Method',
+    sub: 'Mixed-rate invoice tax handling',
+    icon: 'percent', iconBg: 'bg-orange-50', iconColor: 'text-orange-600',
+    render: function() {
+      var cur = (window.AppState && window.AppState.settings && window.AppState.settings.gstCalcMethod) || 'simple';
+      var onInv = (window.AppState && window.AppState.settings && window.AppState.settings.gstBreakdownOnInvoice !== false);
+      var methods = [
+        { value:'simple',   icon:'÷2', color:'bg-blue-50 border-blue-200 text-blue-700',
+          title:'Simple Split (Default)',
+          desc:'Total GST ÷ 2 = CGST = SGST. One blended effective rate shown. Best for single-GST-rate invoices.',
+          eg:'Total GST ₹180 → CGST ₹90 + SGST ₹90' },
+        { value:'ratewise', icon:'⊞',  color:'bg-emerald-50 border-emerald-200 text-emerald-700',
+          title:'Rate-wise Breakup',
+          desc:'Each GST slab shown separately. GST-law compliant for mixed-rate invoices (most recommended).',
+          eg:'5%: CGST 2.5% ₹12.50 + SGST 2.5% ₹12.50 | 18%: CGST 9% ₹90 + SGST 9% ₹90' },
+        { value:'weighted', icon:'∿',  color:'bg-purple-50 border-purple-200 text-purple-700',
+          title:'Weighted Average Rate',
+          desc:'Calculates a weighted average GST% across all items, then splits equally. Cleaner display than rate-wise.',
+          eg:'Avg 12.5% → CGST 6.25% ₹X + SGST 6.25% ₹X' },
+        { value:'highest',  icon:'↑',  color:'bg-amber-50 border-amber-200 text-amber-700',
+          title:'Highest Rate Label',
+          desc:'Shows the highest GST rate across items as the label. Actual tax amount is unchanged.',
+          eg:'Items have 5% & 18% → shows CGST 9% (18% max) + SGST 9%' },
+        { value:'itemwise', icon:'≡',  color:'bg-rose-50 border-rose-200 text-rose-700',
+          title:'Item-wise Breakdown',
+          desc:'Every line item\'s CGST & SGST shown individually in the summary. Most detailed.',
+          eg:'Ashwagandha (18%): C ₹90 S ₹90 | Triphala (5%): C ₹12.50 S ₹12.50' }
+      ];
+      var cards = methods.map(function(m) {
+        var sel = (cur === m.value);
+        return `<div onclick="document.getElementById('smod-gst-method').value='${m.value}';document.querySelectorAll('.gst-method-card').forEach(function(el){el.classList.remove('ring-2','ring-orange-400')});this.classList.add('ring-2','ring-orange-400')"
+          class="gst-method-card border-2 rounded-xl p-3 cursor-pointer transition-all select-none ${sel?'ring-2 ring-orange-400 '+m.color:'border-slate-200 hover:border-slate-300'}">
+          <div class="flex items-start gap-2">
+            <span class="text-xl font-black w-7 text-center">${m.icon}</span>
+            <div class="flex-1">
+              <div class="font-bold text-slate-800 text-sm">${m.title}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">${m.desc}</div>
+              <div class="text-[10px] mt-1.5 px-2 py-1 bg-white/70 rounded-lg border border-slate-100 text-slate-500 font-mono">${m.eg}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="space-y-3">
+        <input type="hidden" id="smod-gst-method" value="${cur}">
+        <div class="space-y-2">${cards}</div>
+        <div class="border-t border-slate-100 pt-3">
+          <label class="flex items-center gap-3 cursor-pointer p-3 rounded-xl hover:bg-slate-50 border border-slate-200">
+            <input type="checkbox" id="smod-gst-on-invoice" ${onInv?'checked':''} class="w-4 h-4 accent-orange-500">
+            <div>
+              <div class="font-semibold text-slate-800 text-sm">Print breakdown on invoice PDF</div>
+              <div class="text-xs text-slate-400 mt-0.5">Shows rate-wise / item-wise GST rows in the invoice total box. Disable for a cleaner, minimal look.</div>
+            </div>
+          </label>
+        </div>
+        <div class="p-3 bg-orange-50 rounded-xl border border-orange-100 text-xs text-orange-700">
+          <strong>💡 GST Tip:</strong> If all your products are at the same GST rate, "Simple Split" is perfectly fine and most compact. Switch to "Rate-wise Breakup" only when you regularly mix different tax slabs (e.g. medicines at 5% + supplements at 18%) for full compliance.
+        </div>
+      </div>`;
+    },
+    save: function() {
+      var m   = document.getElementById('smod-gst-method');
+      var chk = document.getElementById('smod-gst-on-invoice');
+      if (m   && window.AppState && window.AppState.settings) window.AppState.settings.gstCalcMethod       = m.value;
+      if (chk && window.AppState && window.AppState.settings) window.AppState.settings.gstBreakdownOnInvoice = chk.checked;
+      if (window.updateInvoiceUI) window.updateInvoiceUI();
+    }
+  },
   'invoice-display': {
     title: 'Invoice Amount Display',
     sub: 'GST inclusive / exclusive options',
